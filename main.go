@@ -17,13 +17,27 @@ func main() {
 	if len(os.Args) < 2 {
 		printUsage()
 	}
+
 	flag.Parse()
+
+	outFile, err := os.Create(resFile)
+	if err != nil {
+		quit(1, "Cannot open Output File\n")
+	}
+	defer func() {
+		err = outFile.Close()
+		if err != nil {
+			quit(1, "Error closeing Output File")
+		}
+	}()
+
 	fmt.Println("\nCommand Executor")
 	fmt.Println("--------------------------------------")
 	fmt.Println("Full Command:", command)
 	fmt.Println("Output File:", resFile)
 	fmt.Println("--------------------------------------")
-	execCommand(command)
+	status, msg := execCommand(command, outFile)
+	quit(status, msg)
 }
 
 func init() {
@@ -37,54 +51,44 @@ func printUsage() {
 	fmt.Printf("Usage: %s [option] [command or filename]\n\n", os.Args[0])
 	fmt.Println("Options:")
 	flag.PrintDefaults()
-	fmt.Println()
 	quit(1, "")
 }
 
-func execCommand(command string) {
-
-	fmt.Println("Executing command ...")
+func execCommand(command string, outFile *os.File) (status int, msg string) {
 
 	cmd := exec.Command("sh", "-c", command) // #nosec
 
-	outFile, err := os.Create(resFile)
-	if err != nil {
-		quit(2, "Cannot create Output File")
-	}
-	defer func() {
-		err = outFile.Close()
-		if err != nil {
-			quit(2, "Error closeing Output File")
-		}
-	}()
-
 	writer := bufio.NewWriter(outFile)
 	defer func() {
-		err = writer.Flush()
+		err := writer.Flush()
 		if err != nil {
-			quit(3, "Error flushing file buffer")
+			status = 1
+			msg = "Error flushing the buffer"
+			return
 		}
 	}()
 
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
-		quit(3, "Error executing command")
+		status = 1
+		msg = "Error starting the execution"
+		return
 	}
 
 	err = cmd.Wait()
 	if err != nil {
-		if cmd.ProcessState.String() == "exit status 127" {
-			quit(3, "Error: command not found")
-		}
-		quit(3, "Error during command execution, see resFile for details")
+		status = 1
+		msg = "Error during execution :" + cmd.ProcessState.String()
+		return
 	}
 
-	fmt.Println("end of execution ...")
-	fmt.Println("output results of the command can be found in the resFile")
-	fmt.Println()
+	status = 0
+	msg = "Execution completed"
+	return
+
 }
 
 func quit(status int, msg string) {

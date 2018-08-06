@@ -1,27 +1,28 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
-func TestCheckCommand_with_ls(t *testing.T) {
-	res := checkCommand("ls")
-	exp := true
-	if res != exp {
-		t.Errorf("checkCommand failed for testing ls, got: %t, want: %t.", res, exp)
+func TestExecuteCommand_echo(t *testing.T) {
+	outFile, err := os.Create(resFile)
+	if err != nil {
+		quit(1, "Cannot open Output File\n")
 	}
-}
-
-func TestCheckCommand_with_asd(t *testing.T) {
-	res := checkCommand("asd")
-	exp := false
-	if res != exp {
-		t.Errorf("checkCommand failed for testing asd, got: %t, want: %t.", res, exp)
+	defer func() {
+		err = outFile.Close()
+		if err != nil {
+			quit(1, "Error closeing Output File")
+		}
+	}()
+	status, msg := execCommand("echo sajt", outFile)
+	expStatus := 0
+	expMsg := "Execution completed"
+	if status != expStatus {
+		t.Errorf("executeCommand failed for testing echo, got status: %v, expected status: %v.", status, expStatus)
 	}
-}
-
-func TestCheckCommand_with_git(t *testing.T) {
-	res := checkCommand("git")
-	exp := true
-	if res != exp {
-		t.Errorf("checkCommand failed for testing git, got: %t, want: %t.", res, exp)
+	if msg != expMsg {
+		t.Errorf("executeCommand failed for testing echo, got msg: %v, expected msg: %v.", msg, expMsg)
 	}
 }
