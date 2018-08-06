@@ -31,13 +31,18 @@ func main() {
 
 		fmt.Println("Executing command ...")
 
-		cmd := exec.Command(command)
+		cmd := exec.Command(command) // #nosec
 
 		outFile, err := os.Create(resFile)
 		if err != nil {
 			panic(err)
 		}
-		defer outFile.Close()
+		defer func() {
+			err = outFile.Close()
+			if err != nil {
+				panic(err)
+			}
+		}()
 
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
@@ -48,7 +53,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer errorFile.Close()
+		defer func() {
+			err = errorFile.Close()
+			if err != nil {
+				panic(err)
+			}
+		}()
 
 		stderrPipe, err := cmd.StderrPipe()
 		if err != nil {
@@ -56,20 +66,44 @@ func main() {
 		}
 
 		outWriter := bufio.NewWriter(outFile)
-		defer outWriter.Flush()
+		defer func() {
+			err = outWriter.Flush()
+			if err != nil {
+				panic(err)
+			}
+		}()
 
 		errWriter := bufio.NewWriter(errorFile)
-		defer errWriter.Flush()
+		defer func() {
+			err = errWriter.Flush()
+			if err != nil {
+				panic(err)
+			}
+		}()
 
 		err = cmd.Start()
 		if err != nil {
 			panic(err)
 		}
 
-		go io.Copy(outWriter, stdoutPipe)
-		go io.Copy(errWriter, stderrPipe)
+		go func() {
+			_, writeErr := io.Copy(outWriter, stdoutPipe)
+			if writeErr != nil {
+				panic(writeErr)
+			}
+		}()
 
-		cmd.Wait()
+		go func() {
+			_, writeErr := io.Copy(errWriter, stderrPipe)
+			if writeErr != nil {
+				panic(writeErr)
+			}
+		}()
+
+		err = cmd.Wait()
+		if err != nil {
+			panic(err)
+		}
 
 		fmt.Println("end of execution ...")
 
