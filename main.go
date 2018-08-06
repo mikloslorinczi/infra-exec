@@ -4,52 +4,41 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 var (
 	command string
 	resFile string
-	errFile string
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		printUsage()
+	}
 	flag.Parse()
-	splitCommand := strings.Split(command, " ")
-	baseCommand := splitCommand[0]
-	check := checkCommand(baseCommand)
 	fmt.Println("\nCommand Executor")
 	fmt.Println("--------------------------------------")
 	fmt.Println("Full Command:", command)
-	fmt.Println("Base Command:", baseCommand)
 	fmt.Println("Output File:", resFile)
-	fmt.Println("Error File:", errFile)
 	fmt.Println("--------------------------------------")
-	fmt.Println("Checking command ...")
-	fmt.Println("Command is valid :", check)
-	fmt.Println("--------------------------------------")
-	if check {
-		execCommand(command)
-	}
+	execCommand(command)
 }
 
 func init() {
 	flag.StringVar(&command, "c", "", "Command to execute")
 	flag.StringVar(&resFile, "f", "resFile", "Otput File")
-	flag.StringVar(&errFile, "e", "errFile", "Error File")
 }
 
-func checkCommand(command string) bool {
-	path, err := exec.LookPath(command)
-	if err != nil {
-		fmt.Println("Did not find command :", command)
-		return false
-	}
-	fmt.Printf("The command found in %s'\n", path)
-	return true
+func printUsage() {
+	fmt.Println("\nCommand Executor")
+	fmt.Println()
+	fmt.Printf("Usage: %s [option] [command or filename]\n\n", os.Args[0])
+	fmt.Println("Options:")
+	flag.PrintDefaults()
+	fmt.Println()
+	quit(1, "")
 }
 
 func execCommand(command string) {
@@ -60,75 +49,45 @@ func execCommand(command string) {
 
 	outFile, err := os.Create(resFile)
 	if err != nil {
-		panic(err)
+		quit(2, "Cannot create Output File")
 	}
 	defer func() {
 		err = outFile.Close()
 		if err != nil {
-			panic(err)
+			quit(2, "Error closeing Output File")
 		}
 	}()
 
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		panic(err)
-	}
-
-	outWriter := bufio.NewWriter(outFile)
+	writer := bufio.NewWriter(outFile)
 	defer func() {
-		err = outWriter.Flush()
+		err = writer.Flush()
 		if err != nil {
-			panic(err)
+			quit(3, "Error flushing file buffer")
 		}
 	}()
 
-	errorFile, err := os.Create(errFile)
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		err = errorFile.Close()
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		panic(err)
-	}
-
-	errWriter := bufio.NewWriter(errorFile)
-	defer func() {
-		err = errWriter.Flush()
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	go func() {
-		_, writeErr := io.Copy(outWriter, stdoutPipe)
-		if writeErr != nil {
-			panic(writeErr)
-		}
-	}()
-
-	go func() {
-		_, writeErr := io.Copy(errWriter, stderrPipe)
-		if writeErr != nil {
-			panic(writeErr)
-		}
-	}()
+	cmd.Stdout = writer
+	cmd.Stderr = writer
 
 	err = cmd.Start()
 	if err != nil {
-		panic(err)
+		quit(3, "Error executing command")
 	}
 
 	err = cmd.Wait()
 	if err != nil {
-		panic(err)
+		if cmd.ProcessState.String() == "exit status 127" {
+			quit(3, "Error: command not found")
+		}
+		quit(3, "Error during command execution, see resFile for details")
 	}
 
 	fmt.Println("end of execution ...")
+	fmt.Println("output results of the command can be found in the resFile")
+	fmt.Println()
+}
+
+func quit(status int, msg string) {
+	fmt.Println(msg)
+	os.Exit(status)
 }
