@@ -15,7 +15,7 @@ var (
 func main() {
 	flag.Parse()
 	splitCommand := strings.Split(command, " ")
-	fmt.Println("\nCommand Executor\n")
+	fmt.Println("\nCommand Executor")
 	fmt.Println("Full Command:", command)
 	fmt.Println("Base Command:", splitCommand[0])
 	fmt.Println("File:", outfile)
