@@ -4,45 +4,49 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 var (
-	command string
-	resFile string
+	command        string
+	outputFileName string
 )
 
 func main() {
+
 	if len(os.Args) < 2 {
 		printUsage()
 	}
 
 	flag.Parse()
 
-	outFile, err := os.Create(resFile)
+	outputFile, err := getWriteFile(outputFileName)
 	if err != nil {
-		quit(1, "Cannot open Output File\n")
+		quit(1, err)
 	}
+
 	defer func() {
-		err = outFile.Close()
+		err = outputFile.Close()
 		if err != nil {
-			quit(1, "Error closeing Output File")
+			log.Fatal(err)
 		}
 	}()
 
-	fmt.Println("\nCommand Executor")
-	fmt.Println("--------------------------------------")
-	fmt.Println("Full Command:", command)
-	fmt.Println("Output File:", resFile)
-	fmt.Println("--------------------------------------")
-	status, msg := execCommand(command, outFile)
-	quit(status, msg)
+	err = execCommand(command, outputFile)
+	if err != nil {
+		fmt.Printf("Error during execution %v", err)
+		quit(1, err)
+	}
+
 }
 
 func init() {
 	flag.StringVar(&command, "c", "", "Command to execute")
-	flag.StringVar(&resFile, "f", "resFile", "Otput File")
+	flag.StringVar(&outputFileName, "f", "outputFile", "Otput File")
 }
 
 func printUsage() {
@@ -51,47 +55,53 @@ func printUsage() {
 	fmt.Printf("Usage: %s [option] [command or filename]\n\n", os.Args[0])
 	fmt.Println("Options:")
 	flag.PrintDefaults()
-	quit(1, "")
+	quit(1, nil)
 }
 
-func execCommand(command string, outFile *os.File) (status int, msg string) {
+func getWriteFile(fileName string) (*os.File, error) {
+	return os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+}
 
-	cmd := exec.Command("sh", "-c", command) // #nosec
+func parseCommand(command string) (string, []string) {
+	commandSlice := strings.Split(command, " ")
+	name := commandSlice[0]
+	args := []string{}
+	if len(commandSlice) > 1 {
+		args = commandSlice[1:]
+	}
+	return name, args
+}
+
+func execCommand(command string, outFile io.Writer) (err error) {
 
 	writer := bufio.NewWriter(outFile)
 	defer func() {
-		err := writer.Flush()
+		err = writer.Flush()
 		if err != nil {
-			status = 1
-			msg = "Error flushing the buffer"
-			return
+			log.Fatal(err)
 		}
 	}()
 
+	basecommand, args := parseCommand(command)
+	cmd := exec.Command(basecommand, args...) // #nosec
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
-		status = 1
-		msg = "Error starting the execution"
-		return
+		return err
 	}
 
 	err = cmd.Wait()
 	if err != nil {
-		status = 1
-		msg = "Error during execution :" + cmd.ProcessState.String()
-		return
+		return err
 	}
 
-	status = 0
-	msg = "Execution completed"
 	return
 
 }
 
-func quit(status int, msg string) {
-	fmt.Println(msg)
+func quit(status int, err error) {
+	fmt.Println(err.Error())
 	os.Exit(status)
 }

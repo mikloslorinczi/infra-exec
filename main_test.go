@@ -1,28 +1,54 @@
 package main
 
 import (
-	"os"
+	"reflect"
 	"testing"
 )
 
-func TestExecuteCommand_echo(t *testing.T) {
-	outFile, err := os.Create(resFile)
-	if err != nil {
-		quit(1, "Cannot open Output File\n")
+func TestParseCommand_empty(t *testing.T) {
+	name, args := parseCommand("")
+	expName := ""
+	expArgs := []string{}
+	if name != expName {
+		t.Errorf("parseCommand failed for testing echo, expected name: %v, got name: %v.", expName, name)
 	}
-	defer func() {
-		err = outFile.Close()
-		if err != nil {
-			quit(1, "Error closeing Output File")
-		}
-	}()
-	status, msg := execCommand("echo sajt", outFile)
-	expStatus := 0
-	expMsg := "Execution completed"
-	if status != expStatus {
-		t.Errorf("executeCommand failed for testing echo, got status: %v, expected status: %v.", status, expStatus)
+	if !reflect.DeepEqual(args, expArgs) {
+		t.Errorf("ParseCommand failed for testing echo, expected args: %v, got args: %v.", expArgs, args)
 	}
-	if msg != expMsg {
-		t.Errorf("executeCommand failed for testing echo, got msg: %v, expected msg: %v.", msg, expMsg)
+}
+
+func TestParseCommand_echo(t *testing.T) {
+	name, args := parseCommand("echo")
+	expName := "echo"
+	expArgs := []string{}
+	if name != expName {
+		t.Errorf("parseCommand failed for testing echo, expected name: %v, got name: %v.", expName, name)
+	}
+	if !reflect.DeepEqual(args, expArgs) {
+		t.Errorf("ParseCommand failed for testing echo, expected args: %v, got args: %v.", expArgs, args)
+	}
+}
+
+func TestParseCommand_echo_Lali(t *testing.T) {
+	name, args := parseCommand("echo a")
+	expName := "echo"
+	expArgs := []string{"a"}
+	if name != expName {
+		t.Errorf("parseCommand failed for testing echo, expected name: %v, got name: %v.", expName, name)
+	}
+	if !reflect.DeepEqual(args, expArgs) {
+		t.Errorf("ParseCommand failed for testing echo, expected args: %v, got args: %v.", expArgs, args)
+	}
+}
+
+func TestParseCommand_docker(t *testing.T) {
+	name, args := parseCommand("docker run -i -t -d -p 80:8080 tutum/hello-world")
+	expName := "docker"
+	expArgs := []string{"run", "-i", "-t", "-d", "-p", "80:8080", "tutum/hello-world"}
+	if name != expName {
+		t.Errorf("parseCommand failed for testing echo, expected name: %v, got name: %v.", expName, name)
+	}
+	if !reflect.DeepEqual(args, expArgs) {
+		t.Errorf("ParseCommand failed for testing echo, expected args: %v, got args: %v.", expArgs, args)
 	}
 }
