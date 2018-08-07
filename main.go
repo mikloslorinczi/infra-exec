@@ -18,9 +18,7 @@ var (
 
 func main() {
 
-	if len(os.Args) < 2 {
-		printUsage()
-	}
+	checkArgs()
 
 	flag.Parse()
 
@@ -38,7 +36,6 @@ func main() {
 
 	err = execCommand(command, outputFile)
 	if err != nil {
-		fmt.Printf("Error during execution %v", err)
 		quit(1, err)
 	}
 
@@ -49,11 +46,18 @@ func init() {
 	flag.StringVar(&outputFileName, "f", "outputFile", "Otput File")
 }
 
+func checkArgs() {
+	if len(os.Args) < 2 {
+		printUsage()
+		quit(1, nil)
+	}
+}
+
 func printUsage() {
 	fmt.Println("\nCommand Executor")
 	fmt.Println()
-	fmt.Printf("Usage: %s [option] [command or filename]\n\n", os.Args[0])
-	fmt.Println("Options:")
+	fmt.Printf("Usage: %s [option] [command or filename]", os.Args[0])
+	fmt.Println("\n\nOptions:")
 	flag.PrintDefaults()
 }
 
@@ -81,8 +85,8 @@ func execCommand(command string, outFile io.Writer) (err error) {
 		}
 	}()
 
-	basecommand, args := parseCommand(command)
-	cmd := exec.Command(basecommand, args...) // #nosec
+	baseCommand, args := parseCommand(command)
+	cmd := exec.Command(baseCommand, args...) // #nosec
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
@@ -101,6 +105,8 @@ func execCommand(command string, outFile io.Writer) (err error) {
 }
 
 func quit(status int, err error) {
-	fmt.Println(err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 	os.Exit(status)
 }
