@@ -49,7 +49,7 @@ func init() {
 func checkArgs() {
 	if len(os.Args) < 2 {
 		printUsage()
-		quit(1, nil)
+		quit(0, nil)
 	}
 }
 
