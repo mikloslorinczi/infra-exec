@@ -55,7 +55,6 @@ func printUsage() {
 	fmt.Printf("Usage: %s [option] [command or filename]\n\n", os.Args[0])
 	fmt.Println("Options:")
 	flag.PrintDefaults()
-	quit(1, nil)
 }
 
 func getWriteFile(fileName string) (*os.File, error) {
