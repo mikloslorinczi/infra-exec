@@ -27,23 +27,17 @@ func (s *CommandExecutorTestSuite) TestParseCommand_empty_input() {
 
 func (s *CommandExecutorTestSuite) TestExecCommand_empty_input() {
 	testFile, err := executor.GetWriteFile("testFile")
-	if err != nil {
-		s.Error(err, "getWriteFile should create testFile")
-	}
 	defer testFile.Close()
 	defer os.Remove("testFile")
+	require.NoError(s.T(), err, "getWriteFile should create testFile")
 	err = executor.ExecCommand(" ", testFile)
-	if err != nil {
-		s.Error(err, `./infra-exec -c " " should produce an empty outputFile and no error.`)
-	}
+	require.NoError(s.T(), err, `./infra-exec -c " " should produce an empty outputFile and no error.`)
 }
 
 func (s *CommandExecutorTestSuite) TestExecCommand_echo_cheese() {
 	buf := new(bytes.Buffer)
 	err := executor.ExecCommand("echo cheese", buf)
-	if err != nil {
-		s.Error(err, `./infra-exec -c "echo cheese" should produce outputFile with cheese in it, and no error.`)
-	}
+	require.NoError(s.T(), err, `./infra-exec -c "echo cheese" should produce outputFile with cheese in it, and no error.`)
 	require.Equal(s.T(), "cheese\n", buf.String(), "ExecCommand should create outputFile with \"cheese\\n\" in it. Got : %v", buf.String())
 }
 
