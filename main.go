@@ -68,7 +68,7 @@ func getWriteFile(fileName string) (*os.File, error) {
 func parseCommand(command string) (string, []string) {
 	commandSlice := strings.Split(command, " ")
 	name := commandSlice[0]
-	args := commandSlice[1:len(commandSlice)]
+	args := commandSlice[1:]
 	return name, args
 }
 
