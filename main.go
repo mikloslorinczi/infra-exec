@@ -68,16 +68,13 @@ func getWriteFile(fileName string) (*os.File, error) {
 func parseCommand(command string) (string, []string) {
 	commandSlice := strings.Split(command, " ")
 	name := commandSlice[0]
-	args := []string{}
-	if len(commandSlice) > 1 {
-		args = commandSlice[1:]
-	}
+	args := commandSlice[1:len(commandSlice)]
 	return name, args
 }
 
-func execCommand(command string, outFile io.Writer) (err error) {
+func execCommand(command string, w io.Writer) (err error) {
 
-	writer := bufio.NewWriter(outFile)
+	writer := bufio.NewWriter(w)
 	defer func() {
 		err = writer.Flush()
 		if err != nil {

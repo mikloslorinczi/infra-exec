@@ -65,16 +65,18 @@ func TestGetWriteFile(t *testing.T) {
 	}
 	err = os.Remove("testFile")
 	if err != nil {
-		t.Errorf("Error removeing testFile")
+		t.Errorf("Error removing testFile")
 	}
 }
 
-// if the previous test runs without error, we can assume that getWriteFile works properly, and wont throw an error
 func TestExecCommand_space(t *testing.T) {
-	testFile, _ := getWriteFile("testFile")
+	testFile, err := getWriteFile("testFile")
+	if err != nil {
+		t.Errorf("getWriteFile failed geting WriteFile %v", err)
+	}
 	defer testFile.Close()
 	defer os.Remove("testFile")
-	err := execCommand(" ", testFile)
+	err = execCommand(" ", testFile)
 	if err != nil {
 		t.Errorf(`-c " " should produce an empty outputFile and no error, got: %v`, err)
 	}
