@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	command        string
+	commandString  string
 	outputFileName string
 )
 
@@ -23,7 +23,7 @@ func main() {
 
 	flag.Parse()
 
-	outputFile, err := executor.GetWriteFile(outputFileName)
+	outputFile, err := executor.NewWriteFile(outputFileName)
 	if err != nil {
 		fmt.Printf("Error opening outputFile %v\nError :\n%v\n", outputFileName, err)
 		os.Exit(1)
@@ -36,16 +36,16 @@ func main() {
 		}
 	}()
 
-	err = executor.ExecCommand(command, outputFile)
-	if err != nil {
-		fmt.Printf("Cannot execute command (%v)\nError :\n%v\n", command, err)
+	command, commandArgs := executor.ParseCommand(commandString)
+	if err := executor.ExecCommand(command, commandArgs, outputFile); err != nil {
+		fmt.Printf("Cannot execute command (%v)\nError :\n%v\n", commandString, err)
 		os.Exit(1)
 	}
 
 }
 
 func init() {
-	flag.StringVar(&command, "c", "", "Command to execute")
+	flag.StringVar(&commandString, "c", "", "Command to execute")
 	flag.StringVar(&outputFileName, "f", "outputFile", "Otput File")
 }
 
