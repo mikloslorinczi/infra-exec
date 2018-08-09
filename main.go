@@ -1,56 +1,52 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
+
+	"github.com/mikloslorinczi/infra-exec/executor"
 )
 
 var (
-	command        string
+	commandString  string
 	outputFileName string
 )
 
 func main() {
 
-	checkArgs()
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(0)
+	}
 
 	flag.Parse()
 
-	outputFile, err := getWriteFile(outputFileName)
+	outputFile, err := executor.NewWriteFile(outputFileName)
 	if err != nil {
-		quit(1, err)
+		fmt.Printf("Error opening outputFile %v\nError :\n%v\n", outputFileName, err)
+		os.Exit(1)
 	}
 
 	defer func() {
 		err = outputFile.Close()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Cannot close outputFile %v\nError :\n%v\n", outputFileName, err)
 		}
 	}()
 
-	err = execCommand(command, outputFile)
-	if err != nil {
-		quit(1, err)
+	command, commandArgs := executor.ParseCommand(commandString)
+	if err := executor.ExecCommand(command, commandArgs, outputFile); err != nil {
+		fmt.Printf("Cannot execute command (%v)\nError :\n%v\n", commandString, err)
+		os.Exit(1)
 	}
 
 }
 
 func init() {
-	flag.StringVar(&command, "c", "", "Command to execute")
+	flag.StringVar(&commandString, "c", "", "Command to execute")
 	flag.StringVar(&outputFileName, "f", "outputFile", "Otput File")
-}
-
-func checkArgs() {
-	if len(os.Args) < 2 {
-		printUsage()
-		quit(0, nil)
-	}
 }
 
 func printUsage() {
@@ -59,51 +55,4 @@ func printUsage() {
 	fmt.Printf("Usage: %s [option] [command or filename]", os.Args[0])
 	fmt.Println("\n\nOptions:")
 	flag.PrintDefaults()
-}
-
-func getWriteFile(fileName string) (*os.File, error) {
-	return os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-}
-
-func parseCommand(command string) (string, []string) {
-	commandSlice := strings.Split(command, " ")
-	name := commandSlice[0]
-	args := commandSlice[1:]
-	return name, args
-}
-
-func execCommand(command string, w io.Writer) (err error) {
-
-	writer := bufio.NewWriter(w)
-	defer func() {
-		err = writer.Flush()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	baseCommand, args := parseCommand(command)
-	cmd := exec.Command(baseCommand, args...) // #nosec
-	cmd.Stdout = writer
-	cmd.Stderr = writer
-
-	err = cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-
-	return
-
-}
-
-func quit(status int, err error) {
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	os.Exit(status)
 }
