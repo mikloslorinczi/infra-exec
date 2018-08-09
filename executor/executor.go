@@ -39,7 +39,7 @@ func NewWriteFile(path string) (*os.File, error) {
 	return file, err
 }
 
-// ExecCommand accepts a string as a command (it will be parsed to basecommand and args)
+// ExecCommand accepts executor's two own type Command and CommandArguments produced by ParseCommand,
 // and an io.Writer where the result of the execution will be writen (both stdout and stderr).
 // The function may return an error raised during the execution
 func ExecCommand(command Command, commandArgs CommandArguments, w io.Writer) (err error) {
