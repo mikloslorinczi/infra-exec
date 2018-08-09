@@ -2,6 +2,7 @@ package executor_test
 
 import (
 	"bytes"
+	"log"
 	"os"
 	"testing"
 
@@ -27,8 +28,18 @@ func (s *CommandExecutorTestSuite) TestParseCommand_empty_input() {
 
 func (s *CommandExecutorTestSuite) TestExecCommand_empty_input() {
 	testFile, err := executor.GetWriteFile("testFile")
-	defer testFile.Close()
-	defer os.Remove("testFile")
+	defer func() {
+		fileErr := testFile.Close()
+		if fileErr != nil {
+			log.Fatal("Cannot close testFile")
+		}
+	}()
+	defer func() {
+		remErr := os.Remove("testFile")
+		if remErr != nil {
+			log.Fatal("Cannot remove TestFile")
+		}
+	}()
 	require.NoError(s.T(), err, "getWriteFile should create testFile")
 	err = executor.ExecCommand(" ", testFile)
 	require.NoError(s.T(), err, `./infra-exec -c " " should produce an empty outputFile and no error.`)
