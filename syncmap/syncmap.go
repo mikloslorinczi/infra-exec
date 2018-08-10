@@ -1,79 +1,34 @@
-package main
+package syncmap
 
 import (
-	"context"
-	"fmt"
-	"math/rand"
 	"sync"
-	"time"
 )
 
-var (
+// HashMapI interface exposes getMap and addToMap methods for the client,
+// in order to interact with the underlying map.
+type HashMapI interface {
+	GetMap() map[string]string
+	AddToMap(key string, value string)
+}
+
+type hashMap struct {
 	rwMutex sync.RWMutex
-	hashMap = make(map[string]string)
-)
-
-const (
-	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-)
-
-func main() {
-	wg := sync.WaitGroup{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	wg.Add(3)
-	go populateMap(ctx, &wg)
-	go populateMap(ctx, &wg)
-	go printMap(ctx, &wg)
-	wg.Wait()
+	data    map[string]string
 }
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
+// NewHashMap returns a pointer to a hashMap
+func NewHashMap() HashMapI {
+	return &hashMap{data: make(map[string]string)}
 }
 
-func getMap() map[string]string {
-	rwMutex.RLock()
-	defer rwMutex.RUnlock()
-	return hashMap
+func (h *hashMap) GetMap() map[string]string {
+	h.rwMutex.RLock()
+	defer h.rwMutex.RUnlock()
+	return h.data
 }
 
-func addRandomHash() {
-	rwMutex.Lock()
-	defer rwMutex.Unlock()
-	hashMap[randomHash(rand.Intn(8))] = randomHash(rand.Intn(8))
-}
-
-func randomHash(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = rune(letters[rand.Intn(len(letters))])
-	}
-	return string(b)
-}
-
-func populateMap(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			addRandomHash()
-		}
-		time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
-	}
-}
-
-func printMap(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			fmt.Printf("\nHash Map:\n%v\n", getMap())
-		}
-		time.Sleep(time.Second)
-	}
+func (h *hashMap) AddToMap(key string, value string) {
+	h.rwMutex.Lock()
+	defer h.rwMutex.Unlock()
+	h.data[key] = value
 }
