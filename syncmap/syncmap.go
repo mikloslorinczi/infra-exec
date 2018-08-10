@@ -19,9 +19,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	wg.Add(3)
-	go populateMap(ctx)
-	go populateMap(ctx)
-	go printMap(ctx)
+	go populateMap(ctx, &wg)
+	go populateMap(ctx, &wg)
+	go printMap(ctx, &wg)
 	wg.Wait()
 }
 
@@ -49,7 +49,7 @@ func randomHash(n int) string {
 	return string(b)
 }
 
-func populateMap(ctx context.Context) {
+func populateMap(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
@@ -63,7 +63,7 @@ func populateMap(ctx context.Context) {
 	}
 }
 
-func printMap(ctx context.Context) {
+func printMap(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
@@ -72,7 +72,6 @@ func printMap(ctx context.Context) {
 			return
 		default:
 			fmt.Printf("\nHash Map:\n%v\n", getMap())
-
 		}
 		time.Sleep(time.Second)
 	}
