@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -9,16 +10,18 @@ import (
 
 var (
 	wg      sync.WaitGroup
-	mutex   sync.Mutex
+	rwMutex sync.RWMutex
 	hashMap = make(map[string]string)
 	letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
 func main() {
-	wg.Add(1)
-	go populateMap()
-	go populateMap()
-	go printMap()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	wg.Add(3)
+	go populateMap(ctx)
+	go populateMap(ctx)
+	go printMap(ctx)
 	wg.Wait()
 }
 
@@ -27,14 +30,14 @@ func init() {
 }
 
 func getMap() map[string]string {
-	mutex.Lock()
-	defer mutex.Unlock()
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return hashMap
 }
 
 func addRandomHash() {
-	mutex.Lock()
-	defer mutex.Unlock()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 	hashMap[randomHash(rand.Intn(8))] = randomHash(rand.Intn(8))
 }
 
@@ -46,16 +49,31 @@ func randomHash(n int) string {
 	return string(b)
 }
 
-func populateMap() {
+func populateMap(ctx context.Context) {
+	defer wg.Done()
 	for {
-		addRandomHash()
+		select {
+		case <-ctx.Done():
+			fmt.Println("Populate Map canceled")
+			return
+		default:
+			addRandomHash()
+		}
 		time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
 	}
 }
 
-func printMap() {
+func printMap(ctx context.Context) {
+	defer wg.Done()
 	for {
-		fmt.Printf("\nHash Map:\n%v\n", getMap())
+		select {
+		case <-ctx.Done():
+			fmt.Println("Print Map canceled")
+			return
+		default:
+			fmt.Printf("\nHash Map:\n%v\n", getMap())
+
+		}
 		time.Sleep(time.Second)
 	}
 }
