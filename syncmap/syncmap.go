@@ -18,7 +18,7 @@ const (
 )
 
 func main() {
-	var wg sync.WaitGroup
+	wg := sync.WaitGroup{}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	wg.Add(3)
