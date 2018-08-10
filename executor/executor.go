@@ -12,15 +12,15 @@ import (
 )
 
 // Command is parsed from the commandString,
-// its the first part separated by space " ".
+// its the first part separated by space " " [0].
 type Command string
 
 // CommandArguments is an array of strings parsed from the commandString,
-// separated by sapces " ", except for the first element [1:]
+// separated by sapces " ", except for the first element [1:].
 type CommandArguments []string
 
-// ParseCommand takes the command string and split it with the " " separator.
-// The first element will be the basecommand and the others will be the args.
+// ParseCommand takes the commandString and split it with the " " separator.
+// The first element will be the Command itself, and the others will be its arguments.
 func ParseCommand(commandString string) (Command, CommandArguments) {
 	commandSlice := strings.Split(commandString, " ")
 	command := Command(commandSlice[0])
