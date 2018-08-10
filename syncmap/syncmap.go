@@ -9,13 +9,16 @@ import (
 )
 
 var (
-	wg      sync.WaitGroup
 	rwMutex sync.RWMutex
 	hashMap = make(map[string]string)
-	letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+)
+
+const (
+	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 func main() {
+	var wg sync.WaitGroup
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	wg.Add(3)
@@ -44,7 +47,7 @@ func addRandomHash() {
 func randomHash(n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = rune(letters[rand.Intn(len(letters))])
 	}
 	return string(b)
 }
@@ -54,7 +57,6 @@ func populateMap(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Populate Map canceled")
 			return
 		default:
 			addRandomHash()
@@ -68,7 +70,6 @@ func printMap(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Print Map canceled")
 			return
 		default:
 			fmt.Printf("\nHash Map:\n%v\n", getMap())
