@@ -11,7 +11,7 @@ import (
 	"github.com/mikloslorinczi/infra-exec/syncmap"
 )
 
-var myMap = syncmap.NewHashMap()
+var myMap = syncmap.NewSafeMap()
 
 func main() {
 	wg := sync.WaitGroup{}
@@ -31,7 +31,7 @@ func populateMap(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		default:
-			myMap.AddToMap(seeder.RandomHash(3), seeder.RandomHash(3))
+			myMap.SetKey(seeder.RandomHash(3), seeder.RandomHash(3))
 		}
 		time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
 	}
