@@ -4,31 +4,55 @@ import (
 	"sync"
 )
 
-// HashMapI interface exposes getMap and addToMap methods for the client,
-// in order to interact with the underlying map.
-type HashMapI interface {
+// MapI interface requires structures implementing it to have a
+// GetMap function which returns the map
+// SetKey function which sets the given key to the given value
+// GetKey function which returns the value of the given key
+// DeleteKey function which renders the given key's value to its initial zero (empty string).
+type MapI interface {
 	GetMap() map[string]string
-	AddToMap(key string, value string)
+	SetKey(key string, value string)
+	GetKey(key string) string
+	DeleteKey(key string)
 }
 
-type hashMap struct {
+// SafeMap implements the MapI interface. GetMap, SetKey, GetKey and DeleteKey
+// can be callen on its string-map called data. SafeMap uses sync's RWMutex
+// to manage safe concurent calls.
+type SafeMap struct {
 	rwMutex sync.RWMutex
 	data    map[string]string
 }
 
-// NewHashMap returns a pointer to a hashMap
-func NewHashMap() HashMapI {
-	return &hashMap{data: make(map[string]string)}
+// NewSafeMap returns a pointer to a SafeMap
+func NewSafeMap() MapI {
+	return &SafeMap{data: make(map[string]string)}
 }
 
-func (h *hashMap) GetMap() map[string]string {
-	h.rwMutex.RLock()
-	defer h.rwMutex.RUnlock()
-	return h.data
+// GetMap returns the map using Read Lock.
+func (m *SafeMap) GetMap() map[string]string {
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
+	return m.data
 }
 
-func (h *hashMap) AddToMap(key string, value string) {
-	h.rwMutex.Lock()
-	defer h.rwMutex.Unlock()
-	h.data[key] = value
+// SetKey sets a given key to a given value using Lock.
+func (m *SafeMap) SetKey(key string, value string) {
+	m.rwMutex.Lock()
+	defer m.rwMutex.Unlock()
+	m.data[key] = value
+}
+
+// GetKey returns a given key's value using Read Lock.
+func (m *SafeMap) GetKey(key string) string {
+	m.rwMutex.RLock()
+	defer m.rwMutex.RUnlock()
+	return m.data[key]
+}
+
+// DeleteKey renders a given key's value to its initial zero (empty string)
+func (m *SafeMap) DeleteKey(key string) {
+	m.rwMutex.Lock()
+	defer m.rwMutex.Unlock()
+	delete(m.data, key)
 }
