@@ -1,0 +1,23 @@
+[
+    {
+        "id": "task1",
+        "node": "none",
+        "tags": "asd wasd",
+        "status": "not assigned",
+        "command": "ls -a"
+    },
+    {
+        "id": "task2",
+        "node": "Bazsi the Node",
+        "tags": "asd wasd bazsd",
+        "status": "finished successfully",
+        "command": "echo cheese"
+    },
+    {
+        "id": "Task999",
+        "node": "Cassiopeia",
+        "tags": "Asd wasd bazsd",
+        "status": "pending",
+        "command": "docker run hello-wolrd"
+    }
+]
