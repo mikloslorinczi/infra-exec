@@ -69,7 +69,7 @@ func printUsage() {
 func setEnvPass() error {
 	envPass = os.Getenv("ADMIN_PASSWORD")
 	if envPass == "" {
-		fmt.Println("\nNo ADMIN_PASSWORD found in the environment\n")
+		fmt.Printf("\nNo ADMIN_PASSWORD found in the environment\n")
 		input, err := getInput("Admin password : ")
 		if err != nil {
 			return err

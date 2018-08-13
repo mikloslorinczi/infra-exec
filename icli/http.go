@@ -76,10 +76,10 @@ func postRequest(url string, body []byte) ([]byte, error) {
 		return response, err
 	}
 	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			err = errors.Wrap(err, "Error closing response body\n")
-			log.Fatal(err)
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
+			closeErr = errors.Wrap(closeErr, "Error closing response body\n")
+			log.Fatal(closeErr)
 		}
 	}()
 	response, err = ioutil.ReadAll(resp.Body)
