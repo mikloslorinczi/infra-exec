@@ -1,4 +1,4 @@
-package infraserver
+package main
 
 import (
 	"encoding/json"
@@ -30,14 +30,14 @@ type jsonDB struct {
 }
 
 // ConnectJSONDB returns a pointer to a jsonDB, working with the given path.
-func ConnectJSONDB(path string) DBI {
+func connectJSONDB(path string) DBI {
 	return &jsonDB{path: path}
 }
 
 func (db *jsonDB) Load() error {
 	db.rwMutex.Lock()
 	defer db.rwMutex.Unlock()
-	file, err := os.OpenFile(db.path, os.O_RDONLY|os.O_CREATE, 0440)
+	file, err := os.OpenFile(db.path, os.O_RDONLY|os.O_CREATE, 0660)
 	if err != nil {
 		return errors.Wrapf(err, "Cannot open DB File %v for Read", db.path)
 	}
@@ -51,11 +51,12 @@ func (db *jsonDB) Load() error {
 	if err != nil {
 		return errors.Wrapf(err, "Cannot read from DB file %v", db.path)
 	}
-	err = json.Unmarshal(bytes, &db.data)
-	if err != nil {
-		return errors.Wrapf(err, "Cannot decode JSON file %v", db.path)
+	if len(bytes) > 0 {
+		err = json.Unmarshal(bytes, &db.data)
+		if err != nil {
+			return errors.Wrapf(err, "Cannot decode JSON file %v", db.path)
+		}
 	}
-
 	return nil
 }
 

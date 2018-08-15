@@ -1,4 +1,4 @@
-package infraserver
+package main
 
 import (
 	"encoding/json"
@@ -9,12 +9,12 @@ import (
 	"github.com/mikloslorinczi/infra-exec/common"
 )
 
-// TaskDB is the interface of the JSON db containing the Tasks.
-var TaskDB DBI
+// taskDB is the interface of the JSON db containing the Tasks.
+var taskDB DBI
 
-// AuthCheck check the HTTP request if "adminpassword" can be found
+// authCheck check the HTTP request if "adminpassword" can be found
 // in the HEader, and if it equas to the preset AdminPass.
-func AuthCheck(next http.Handler) http.Handler {
+func authCheck(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("adminpassword") != common.AdminPass {
 			res.WriteHeader(http.StatusUnauthorized)
@@ -29,8 +29,8 @@ func AuthCheck(next http.Handler) http.Handler {
 	})
 }
 
-// Custom404 handles all unhandlet request with a common Wrong way 404 message.
-func Custom404() http.Handler {
+// custom404 handles all unhandlet request with a common Wrong way 404 message.
+func custom404() http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusNotFound)
 		encoder := json.NewEncoder(res)
@@ -41,9 +41,9 @@ func Custom404() http.Handler {
 	})
 }
 
-// ListTasks handles the api/task/list request
-func ListTasks(res http.ResponseWriter, req *http.Request) {
-	msg, _ := TaskDB.queryAll()
+// listTasks handles the api/task/list request
+func listTasks(res http.ResponseWriter, req *http.Request) {
+	msg, _ := taskDB.queryAll()
 	encoder := json.NewEncoder(res)
 	err := encoder.Encode(msg)
 	if err != nil {
@@ -51,10 +51,10 @@ func ListTasks(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// QueryTask handles the api/task/query/{id} requests
-func QueryTask(res http.ResponseWriter, req *http.Request) {
+// queryTask handles the api/task/query/{id} requests
+func queryTask(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	task, ok := TaskDB.query(params["id"])
+	task, ok := taskDB.query(params["id"])
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		encoder := json.NewEncoder(res)
@@ -71,8 +71,8 @@ func QueryTask(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// AddTask handles the api/task/add requests
-func AddTask(res http.ResponseWriter, req *http.Request) {
+// addTask handles the api/task/add requests
+func addTask(res http.ResponseWriter, req *http.Request) {
 	var (
 		command common.CommandObj
 		newTask common.Task
@@ -91,7 +91,7 @@ func AddTask(res http.ResponseWriter, req *http.Request) {
 	}
 	newTask.Command = command.Command
 	newTask.Tags = command.Tags
-	id, err := TaskDB.add(newTask)
+	id, err := taskDB.add(newTask)
 	if err != nil {
 		fmt.Printf("Cannot add new task to DB\n%v", err)
 		res.WriteHeader(http.StatusInternalServerError)

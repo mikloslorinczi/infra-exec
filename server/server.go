@@ -11,7 +11,6 @@ import (
 	"github.com/go-http-utils/logger"
 	"github.com/gorilla/mux"
 	"github.com/mikloslorinczi/infra-exec/common"
-	"github.com/mikloslorinczi/infra-exec/infraserver"
 )
 
 var port int
@@ -30,19 +29,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	infraserver.TaskDB = infraserver.ConnectJSONDB("db.json")
-	err := infraserver.TaskDB.Load()
+	taskDB = connectJSONDB("db.json")
+	err := taskDB.Load()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
 	router := mux.NewRouter()
-	router.NotFoundHandler = infraserver.Custom404()
-	router.Use(infraserver.AuthCheck)
-	router.HandleFunc("/api/task/list", infraserver.ListTasks).Methods("GET")
-	router.HandleFunc("/api/task/query/{id}", infraserver.QueryTask).Methods("GET")
-	router.HandleFunc("/api/task/add", infraserver.AddTask).Methods("POST")
+	router.NotFoundHandler = custom404()
+	router.Use(authCheck)
+	router.HandleFunc("/api/task/list", listTasks).Methods("GET")
+	router.HandleFunc("/api/task/query/{id}", queryTask).Methods("GET")
+	router.HandleFunc("/api/task/add", addTask).Methods("POST")
 
 	fmt.Printf("\nInfra server listening on PORT %v\n", port)
 

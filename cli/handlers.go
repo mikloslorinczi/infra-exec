@@ -3,12 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/mikloslorinczi/infra-exec/infracli"
 )
 
 func listTasks() {
-	tasks, err := infracli.ListTasks()
+	tasks, err := getTasks()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -19,12 +17,12 @@ func listTasks() {
 }
 
 func addTask() {
-	commandObj, err := infracli.ReadCommand()
+	commandObj, err := readCommand()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	response, err := infracli.AddTask(commandObj)
+	response, err := addNewTask(commandObj)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -33,7 +31,7 @@ func addTask() {
 }
 
 func queryTask() {
-	task, err := infracli.QueryTask(query)
+	task, err := getTaskByID(query)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
