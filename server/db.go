@@ -37,7 +37,7 @@ func connectJSONDB(path string) DBI {
 func (db *jsonDB) Load() error {
 	db.rwMutex.Lock()
 	defer db.rwMutex.Unlock()
-	file, err := os.OpenFile(db.path, os.O_RDONLY|os.O_CREATE, 0660)
+	file, err := os.OpenFile(db.path, os.O_RDONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "Cannot open DB File %v for Read", db.path)
 	}

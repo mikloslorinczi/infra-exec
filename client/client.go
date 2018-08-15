@@ -45,7 +45,7 @@ func main() {
 
 		fmt.Printf("Tasks\n%v\n", tasks)
 
-		time.Sleep(nextTick.Sub(time.Now()))
+		time.Sleep(time.Until(nextTick))
 	}
 
 }
