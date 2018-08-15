@@ -2,3 +2,4 @@ infra-exec
 outputFile
 testFile
 .vscode
+db.json

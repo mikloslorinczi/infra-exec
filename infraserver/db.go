@@ -1,4 +1,4 @@
-package main
+package infraserver
 
 import (
 	"encoding/json"
@@ -7,31 +7,26 @@ import (
 	"os"
 	"sync"
 
+	"github.com/mikloslorinczi/infra-exec/common"
 	"github.com/pkg/errors"
+	"github.com/rs/xid"
 )
-
-type task struct {
-	ID      string `json:"id"`
-	Node    string `json:"node"`
-	Tags    string `json:"tags"`
-	Status  string `json:"status"`
-	Command string `json:"command"`
-}
 
 // DBI is the interface of the JSON DB.
 type DBI interface {
-	open() error
+	Load() error
 	save() error
-	add(body []byte) (string, error)
-	remove(id string) error
-	query(id string) ([]byte, error)
-	update(id string, body []byte) error
+	add(t common.Task) (string, error)
+	remove(id string) (bool, error)
+	query(id string) (common.Task, bool)
+	queryAll() ([]common.Task, bool)
+	update(id string, t common.Task) (bool, error)
 }
 
 type jsonDB struct {
 	rwMutex sync.RWMutex
 	path    string
-	data    []task
+	data    []common.Task
 }
 
 // ConnectJSONDB returns a pointer to a jsonDB, working with the given path.
@@ -39,7 +34,7 @@ func ConnectJSONDB(path string) DBI {
 	return &jsonDB{path: path}
 }
 
-func (db *jsonDB) open() error {
+func (db *jsonDB) Load() error {
 	db.rwMutex.Lock()
 	defer db.rwMutex.Unlock()
 	file, err := os.OpenFile(db.path, os.O_RDONLY|os.O_CREATE, 0440)
@@ -91,18 +86,63 @@ func (db *jsonDB) save() error {
 	return nil
 }
 
-func (db *jsonDB) add(body []byte) (string, error) {
-	return "", nil
+func (db *jsonDB) add(t common.Task) (string, error) {
+	t.ID = xid.New().String()
+	t.Node = "None"
+	t.Status = "added"
+	db.data = append(db.data, t)
+	err := db.save()
+	if err != nil {
+		return "", err
+	}
+	return t.ID, nil
 }
 
-func (db *jsonDB) remove(id string) error {
-	return nil
+func (db *jsonDB) remove(id string) (bool, error) {
+	removed := false
+	for i, task := range db.data {
+		if task.ID == id {
+			db.data = append(db.data[:i], db.data[i+1:]...)
+			err := db.save()
+			if err != nil {
+				return removed, err
+			}
+			removed = true
+		}
+	}
+	return removed, nil
 }
 
-func (db *jsonDB) query(id string) ([]byte, error) {
-	return []byte{}, nil
+func (db *jsonDB) query(id string) (common.Task, bool) {
+	t := common.Task{}
+	found := false
+	for _, task := range db.data {
+		if task.ID == id {
+			t = task
+			found = true
+		}
+	}
+	return t, found
 }
 
-func (db *jsonDB) update(id string, body []byte) error {
-	return nil
+func (db *jsonDB) queryAll() ([]common.Task, bool) {
+	return db.data, len(db.data) > 0
+}
+
+func (db *jsonDB) update(id string, t common.Task) (bool, error) {
+	updated := false
+	for i, task := range db.data {
+		if task.ID == id {
+			db.data[i].Node = t.Node
+			db.data[i].Status = t.Status
+			db.data[i].Status = t.Status
+			db.data[i].Command = t.Command
+			err := db.save()
+			if err != nil {
+				return updated, err
+			}
+			updated = true
+		}
+	}
+	return updated, nil
 }
