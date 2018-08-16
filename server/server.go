@@ -42,6 +42,7 @@ func main() {
 	router.HandleFunc("/api/task/list", listTasks).Methods("GET")
 	router.HandleFunc("/api/task/query/{id}", queryTask).Methods("GET")
 	router.HandleFunc("/api/task/add", addTask).Methods("POST")
+	router.HandleFunc("/api/task/claim", claimTask).Methods("POST")
 
 	fmt.Printf("\nInfra server listening on PORT %v\n", port)
 

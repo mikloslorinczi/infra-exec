@@ -44,3 +44,17 @@ func SendRequest(method string, url string, body []byte) ([]byte, error) {
 	}
 	return response, nil
 }
+
+// GetTasks sends a request to the APIURL/task/list and returns
+// the fetched tasks as a slice, and on optional http error.
+func GetTasks() ([]Task, error) {
+	tasksJSON, err := SendRequest("GET", APIURL+"/task/list", nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "Cannot get task list")
+	}
+	tasks, err := JSONToTasks(tasksJSON)
+	if err != nil {
+		return nil, errors.Wrap(err, "Cannot get task list")
+	}
+	return tasks, nil
+}

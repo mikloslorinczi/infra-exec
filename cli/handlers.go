@@ -3,17 +3,22 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/mikloslorinczi/infra-exec/common"
+	"github.com/pkg/errors"
 )
 
-func listTasks() {
-	tasks, err := getTasks()
+func readCommand() (common.CommandObj, error) {
+	commandObj := common.CommandObj{}
+	command, err := common.GetInput("Enter command :")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return commandObj, errors.Wrap(err, "Cannot add new task")
 	}
-	for _, task := range tasks {
-		fmt.Printf("\nID : %v\nNode : %v\nTags : %v\nStatus : %v\nCommand : %v\n", task.ID, task.Node, task.Tags, task.Status, task.Command)
+	tags, err := common.GetInput("Enter tags :")
+	if err != nil {
+		return commandObj, errors.Wrap(err, "Cannot add new task")
 	}
+	return common.CommandObj{Command: command, Tags: tags}, nil
 }
 
 func addTask() {
@@ -28,6 +33,17 @@ func addTask() {
 		os.Exit(1)
 	}
 	fmt.Printf("New Task added with the ID %v\n", response.Msg)
+}
+
+func listTasks() {
+	tasks, err := common.GetTasks()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	for _, task := range tasks {
+		fmt.Printf("\nID : %v\nNode : %v\nTags : %v\nStatus : %v\nCommand : %v\n", task.ID, task.Node, task.Tags, task.Status, task.Command)
+	}
 }
 
 func queryTask() {

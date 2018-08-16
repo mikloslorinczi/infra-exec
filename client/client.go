@@ -22,15 +22,13 @@ func main() {
 	if common.AdminPass == "" {
 		common.AdminPass = os.Getenv("ADMIN_PASSWORD")
 	}
-
 	if common.AdminPass == "" {
-		fmt.Println()
-		fmt.Println("No ADMIN_PASSWORD found, please set it with the -pass flag, or export it explicitly to the environment.")
+		fmt.Printf("\nNo ADMIN_PASSWORD found, please set it with the -pass flag, or export it explicitly to the environment.")
 		printUsage()
 		os.Exit(1)
 	}
-
 	if nodeName == "" {
+		fmt.Printf("\nThe node must have a name, please set it with the -name flag\n")
 		printUsage()
 		os.Exit(1)
 	}
@@ -38,12 +36,30 @@ func main() {
 	for running := true; running; {
 		nextTick := time.Now().Add(time.Second * time.Duration(period))
 
-		tasks, err := fetchTasks()
+		tasks, err := common.GetTasks()
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			unassigned, found := getUnassigned(tasks)
+			if found {
+				task, ok := getFirstMatch(unassigned)
+				if ok {
+					task.Node = nodeName
+					response, err := claimTask(task)
+					if err != nil {
+						fmt.Println(err)
+					} else {
+						fmt.Println(response.Msg)
+						filePath, err := executeTask(task)
+						if err != nil {
+							fmt.Printf("Error during execution\n%v", err)
+						} else {
+							fmt.Printf("Task executed, logs can be found at %v\n", filePath)
+						}
+					}
+				}
+			}
 		}
-
-		fmt.Printf("Tasks\n%v\n", tasks)
 
 		time.Sleep(time.Until(nextTick))
 	}

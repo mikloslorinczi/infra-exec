@@ -55,7 +55,7 @@ func printUsage() {
 	fmt.Println("\nInfra CLI")
 	fmt.Println()
 	fmt.Println("Execute tasks remotely")
-
+	fmt.Println()
 	fmt.Printf("Usage: %s [option] [command or taskID]", os.Args[0])
 	fmt.Println("\n\nOptions:")
 	flag.PrintDefaults()

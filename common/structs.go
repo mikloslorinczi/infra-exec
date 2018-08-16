@@ -49,6 +49,17 @@ func CommandToJSON(command CommandObj) ([]byte, error) {
 	return bytes, nil
 }
 
+// TaskToJSON converts a Task into JSON.
+// It returns the byte representation of the JSON and on optional encoding error.
+func TaskToJSON(task Task) ([]byte, error) {
+	bytes, err := json.Marshal(task)
+	if err != nil {
+		err = errors.Wrapf(err, "Error encoding JSON task: %v", task)
+		return nil, err
+	}
+	return bytes, nil
+}
+
 // JSONToTasks converts a JSON into a slice of Tasks.
 // It returns the slice and on optional decoding error.
 func JSONToTasks(body []byte) ([]Task, error) {

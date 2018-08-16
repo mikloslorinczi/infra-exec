@@ -107,3 +107,37 @@ func addTask(res http.ResponseWriter, req *http.Request) {
 		fmt.Printf("Error encoding message %v", err)
 	}
 }
+
+// claimTask handles the api/task/claim request
+func claimTask(res http.ResponseWriter, req *http.Request) {
+	var taskToClaim common.Task
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&taskToClaim)
+	if err != nil {
+		fmt.Printf("Cannot decode JSON\n%v", err)
+		res.WriteHeader(http.StatusInternalServerError)
+		encoder := json.NewEncoder(res)
+		err = encoder.Encode(common.ResponseMsg{Msg: "Invalid data"})
+		if err != nil {
+			fmt.Printf("Error encoding message %v", err)
+		}
+		return
+	}
+	taskToClaim.Status = "Assigned"
+	_, err = taskDB.update(taskToClaim.ID, taskToClaim)
+	if err != nil {
+		fmt.Printf("Cannot claim Task\n%v\n", err)
+		res.WriteHeader(http.StatusInternalServerError)
+		encoder := json.NewEncoder(res)
+		err = encoder.Encode(common.ResponseMsg{Msg: "Database error"})
+		if err != nil {
+			fmt.Printf("Error encoding message %v", err)
+		}
+		return
+	}
+	encoder := json.NewEncoder(res)
+	err = encoder.Encode(common.ResponseMsg{Msg: "Successfully claimed task " + taskToClaim.ID})
+	if err != nil {
+		fmt.Printf("Error encoding message %v", err)
+	}
+}

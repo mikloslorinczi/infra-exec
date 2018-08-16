@@ -90,7 +90,7 @@ func (db *jsonDB) save() error {
 func (db *jsonDB) add(t common.Task) (string, error) {
 	t.ID = xid.New().String()
 	t.Node = "None"
-	t.Status = "added"
+	t.Status = "Created"
 	db.data = append(db.data, t)
 	err := db.save()
 	if err != nil {
