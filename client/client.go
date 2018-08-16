@@ -33,6 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("\nInfra Client - %v initialized.\nWith the tags: %v\nPolling Infra Server @ %v every %v seconds\n", nodeName, nodeTags, common.APIURL, period)
 	for running := true; running; {
 		nextTick := time.Now().Add(time.Second * time.Duration(period))
 
