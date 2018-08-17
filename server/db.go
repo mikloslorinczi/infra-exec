@@ -135,7 +135,7 @@ func (db *jsonDB) update(id string, t common.Task) (bool, error) {
 	for i, task := range db.data {
 		if task.ID == id {
 			db.data[i].Node = t.Node
-			db.data[i].Status = t.Status
+			db.data[i].Tags = t.Tags
 			db.data[i].Status = t.Status
 			db.data[i].Command = t.Command
 			err := db.save()

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mikloslorinczi/infra-exec/common"
 	"github.com/pkg/errors"
@@ -21,36 +22,49 @@ func readCommand() (common.CommandObj, error) {
 	return common.CommandObj{Command: command, Tags: tags}, nil
 }
 
-func addTask() {
+func addTask() (common.ResponseMsg, error) {
+	response := common.ResponseMsg{}
 	commandObj, err := readCommand()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return response, errors.Wrap(err, "Error reading commoand")
 	}
-	response, err := addNewTask(commandObj)
+	response, err = addNewTask(commandObj)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return response, errors.Wrap(err, "Error adding new task")
 	}
-	fmt.Printf("New Task added with the ID %v\n", response.Msg)
+	return response, nil
 }
 
-func listTasks() {
+func listTasks() ([]common.Task, error) {
 	tasks, err := common.GetTasks()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return tasks, errors.Wrap(err, "Error getting tasks")
 	}
-	for _, task := range tasks {
-		fmt.Printf("\nID : %v\nNode : %v\nTags : %v\nStatus : %v\nCommand : %v\n", task.ID, task.Node, task.Tags, task.Status, task.Command)
-	}
+	return tasks, nil
 }
 
-func queryTask() {
+func queryTask(query string) (common.Task, error) {
 	task, err := getTaskByID(query)
+	if err != nil {
+		return task, errors.Wrap(err, "Error querying task")
+	}
+	return task, nil
+}
+
+func getLog(ID string) {
+	task, err := queryTask(logs)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Printf("Task\nID      : %v\nNode    : %v\nTags    : %v\nStatus  : %v\nCommand : %v\n", task.ID, task.Node, task.Tags, task.Status, task.Command)
+	if strings.Contains(task.Status, "log available") {
+		err := downloadLog(task.ID)
+		if err != nil {
+			fmt.Printf("Error downloading logfile %v.log\n%v\n", task.ID, err)
+			os.Exit(1)
+		}
+		fmt.Printf("Successfully downloaded logfile logs/%v.log\n", task.ID)
+	} else {
+		fmt.Printf("Log not available task status %v\n", task.Status)
+	}
 }

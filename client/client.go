@@ -19,6 +19,51 @@ func main() {
 
 	flag.Parse()
 
+	initClient()
+
+	fmt.Printf("\nInfra Client - %v initialized.\nWith the tags: %v\nPolling Infra Server @ %v every %v seconds\n\n", nodeName, nodeTags, common.APIURL, period)
+
+	for running := true; running; {
+		nextTick := time.Now().Add(time.Second * time.Duration(period))
+		fmt.Println("Polling server ...")
+		task, ok, err := getTaskToExec()
+		if err != nil {
+			fmt.Println(err)
+		}
+		if ok {
+			fmt.Println("Matching Task found ...")
+			task.Node = nodeName
+			response, err := claimTask(task)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println(response.Msg)
+				filePath, err := executeTask(task)
+				if err != nil {
+					fmt.Printf("Error during execution %v\n", err)
+					_, err := common.UpdateTaskStatus(task.ID, "Execution error")
+					if err != nil {
+						fmt.Printf("Error updating Task status %v\n", err)
+					}
+				} else {
+					fmt.Printf("Task executed, logs can be found at %v\n", filePath)
+					_, err := common.UpdateTaskStatus(task.ID, "Executed")
+					if err != nil {
+						fmt.Printf("Error updating Task status %v", err)
+					}
+					err = uploadLog(filePath, task.ID)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
+			}
+		}
+
+		time.Sleep(time.Until(nextTick))
+	}
+}
+
+func initClient() {
 	if common.AdminPass == "" {
 		common.AdminPass = os.Getenv("ADMIN_PASSWORD")
 	}
@@ -32,39 +77,6 @@ func main() {
 		printUsage()
 		os.Exit(1)
 	}
-
-	fmt.Printf("\nInfra Client - %v initialized.\nWith the tags: %v\nPolling Infra Server @ %v every %v seconds\n", nodeName, nodeTags, common.APIURL, period)
-	for running := true; running; {
-		nextTick := time.Now().Add(time.Second * time.Duration(period))
-
-		tasks, err := common.GetTasks()
-		if err != nil {
-			fmt.Println(err)
-		} else {
-			unassigned, found := getUnassigned(tasks)
-			if found {
-				task, ok := getFirstMatch(unassigned)
-				if ok {
-					task.Node = nodeName
-					response, err := claimTask(task)
-					if err != nil {
-						fmt.Println(err)
-					} else {
-						fmt.Println(response.Msg)
-						filePath, err := executeTask(task)
-						if err != nil {
-							fmt.Printf("Error during execution\n%v", err)
-						} else {
-							fmt.Printf("Task executed, logs can be found at %v\n", filePath)
-						}
-					}
-				}
-			}
-		}
-
-		time.Sleep(time.Until(nextTick))
-	}
-
 }
 
 func init() {

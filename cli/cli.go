@@ -17,28 +17,41 @@ var (
 
 func main() {
 
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(0)
-	}
-
-	if err := common.SetAdminPass(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	initCLI()
 
 	flag.Parse()
 
 	if list {
-		listTasks()
+		tasks, err := listTasks()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		for _, task := range tasks {
+			fmt.Printf("\nID : %v\nNode : %v\nTags : %v\nStatus : %v\nCommand : %v\n", task.ID, task.Node, task.Tags, task.Status, task.Command)
+		}
 	}
 
 	if add {
-		addTask()
+		response, err := addTask()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		fmt.Printf("New task added with the ID %v\n", response.Msg)
 	}
 
 	if query != "" {
-		queryTask()
+		task, err := queryTask(query)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		fmt.Printf("Task\nID      : %v\nNode    : %v\nTags    : %v\nStatus  : %v\nCommand : %v\n", task.ID, task.Node, task.Tags, task.Status, task.Command)
+	}
+
+	if logs != "" {
+		getLog(logs)
 	}
 
 }
@@ -49,6 +62,17 @@ func init() {
 	flag.StringVar(&query, "q", "", "Query task by ID")
 	flag.StringVar(&logs, "log", "", "Require logs of task by ID")
 	flag.StringVar(&common.APIURL, "u", "http://localhost:7474/api", "URL address of the api")
+}
+
+func initCLI() {
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(0)
+	}
+	if err := common.SetAdminPass(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
 func printUsage() {

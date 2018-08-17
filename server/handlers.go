@@ -3,7 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mikloslorinczi/infra-exec/common"
@@ -41,7 +45,7 @@ func custom404() http.Handler {
 	})
 }
 
-// listTasks handles the api/task/list request
+// listTasks handles the api/task/list request.
 func listTasks(res http.ResponseWriter, req *http.Request) {
 	msg, _ := taskDB.queryAll()
 	encoder := json.NewEncoder(res)
@@ -51,7 +55,7 @@ func listTasks(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// queryTask handles the api/task/query/{id} requests
+// queryTask handles the api/task/query/{id} requests.
 func queryTask(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	task, ok := taskDB.query(params["id"])
@@ -71,7 +75,7 @@ func queryTask(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// addTask handles the api/task/add requests
+// addTask handles the api/task/add requests.
 func addTask(res http.ResponseWriter, req *http.Request) {
 	var (
 		command common.CommandObj
@@ -108,7 +112,7 @@ func addTask(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// claimTask handles the api/task/claim request
+// claimTask handles the api/task/claim request.
 func claimTask(res http.ResponseWriter, req *http.Request) {
 	var taskToClaim common.Task
 	decoder := json.NewDecoder(req.Body)
@@ -139,5 +143,89 @@ func claimTask(res http.ResponseWriter, req *http.Request) {
 	err = encoder.Encode(common.ResponseMsg{Msg: "Successfully claimed task " + taskToClaim.ID})
 	if err != nil {
 		fmt.Printf("Error encoding message %v", err)
+	}
+}
+
+// updateTaskStatus handles the api/task/update/{id}/{status} requests.
+func updateTaskStatus(res http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
+	task, ok := taskDB.query(params["id"])
+	if !ok {
+		res.WriteHeader(http.StatusNotFound)
+		encoder := json.NewEncoder(res)
+		err := encoder.Encode(common.ResponseMsg{Msg: "Task not found"})
+		if err != nil {
+			fmt.Printf("Error encoding message %v", err)
+		}
+	} else {
+		task.Status = params["status"]
+		_, dbErr := taskDB.update(params["id"], task)
+		if dbErr != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			encoder := json.NewEncoder(res)
+			err := encoder.Encode(common.ResponseMsg{Msg: "Cannot save to Task Database"})
+			if err != nil {
+				fmt.Printf("Error encoding message %v", err)
+			}
+			return
+		}
+		encoder := json.NewEncoder(res)
+		err := encoder.Encode(common.ResponseMsg{Msg: "Task status updated"})
+		if err != nil {
+			fmt.Printf("Error encoding message %v", err)
+			return
+		}
+	}
+}
+
+// uploadLog handes the api/log/upload/{id} requests.
+func uploadLog(res http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
+	path := "logs/" + params["id"] + ".log"
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		fmt.Printf("Cannot create logfile %v\n%v\n", path, err)
+	}
+	defer func() {
+		closeErr := file.Close()
+		if closeErr != nil {
+			log.Fatalf("Error closing logfile %v\n%v\n", path, err)
+		}
+	}()
+	n, err := io.Copy(file, req.Body)
+	if err != nil {
+		fmt.Printf("Cannot write data to file \n%v", err)
+	}
+	task, _ := taskDB.query(params["id"])
+	task.Status += ", log available"
+	_, err = taskDB.update(task.ID, task)
+	if err != nil {
+		fmt.Printf("Error updating task status %v", err)
+	}
+	_, err = res.Write([]byte(fmt.Sprintf("%d bytes are recieved.\n", n)))
+	if err != nil {
+		fmt.Printf("Error sending response\n%v", err)
+	}
+}
+
+func downloadLog(res http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
+	path := "logs/" + params["id"] + ".log"
+	task, _ := taskDB.query(params["id"])
+	if strings.Contains(task.Status, "log available") {
+		logfile, err := os.OpenFile(path, os.O_RDONLY, 0400)
+		if err != nil {
+			fmt.Printf("Error reading logfile %v\n%v\n", path, err)
+		}
+		defer func() {
+			closeErr := logfile.Close()
+			if closeErr != nil {
+				log.Fatalf("Error closing logifle %v\n%v\n", path, err)
+			}
+		}()
+		_, err = io.Copy(res, logfile)
+		if err != nil {
+			fmt.Printf("Error sending logfile %v\n%v\n", path, err)
+		}
 	}
 }
