@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/mikloslorinczi/infra-exec/common"
@@ -23,16 +27,28 @@ func readCommand() (common.CommandObj, error) {
 }
 
 func addTask() (common.ResponseMsg, error) {
-	response := common.ResponseMsg{}
+	var (
+		responseMsg  common.ResponseMsg
+		commandJSON  []byte
+		responseJSON []byte
+	)
 	commandObj, err := readCommand()
 	if err != nil {
-		return response, errors.Wrap(err, "Error reading commoand")
+		return responseMsg, errors.Wrap(err, "Error reading commoand")
 	}
-	response, err = addNewTask(commandObj)
+	err = common.ToJSON(&commandObj, &commandJSON)
 	if err != nil {
-		return response, errors.Wrap(err, "Error adding new task")
+		return responseMsg, errors.Wrap(err, "Cannot add new task")
 	}
-	return response, nil
+	responseJSON, err = common.SendRequest("POST", common.APIURL+"/task/add", commandJSON)
+	if err != nil {
+		return responseMsg, errors.Wrap(err, "Cannot add new task")
+	}
+	err = common.FromJSON(&responseMsg, responseJSON)
+	if err != nil {
+		return responseMsg, errors.Wrap(err, "Cannot add new task")
+	}
+	return responseMsg, nil
 }
 
 func listTasks() ([]common.Task, error) {
@@ -44,27 +60,67 @@ func listTasks() ([]common.Task, error) {
 }
 
 func queryTask(query string) (common.Task, error) {
-	task, err := getTaskByID(query)
+	var task common.Task
+	taskJSON, err := common.SendRequest("GET", common.APIURL+"/task/query/"+query, nil)
 	if err != nil {
-		return task, errors.Wrap(err, "Error querying task")
+		return task, errors.Wrap(err, "Cannot query task")
+	}
+	err = common.FromJSON(&task, taskJSON)
+	if err != nil {
+		return task, errors.Wrap(err, "Cannot query task")
 	}
 	return task, nil
 }
 
-func getLog(ID string) {
+func getLog(ID string) error {
 	task, err := queryTask(logs)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return errors.Wrapf(err, "Error geting Task %v\n", ID)
 	}
-	if strings.Contains(task.Status, "log available") {
-		err := downloadLog(task.ID)
-		if err != nil {
-			fmt.Printf("Error downloading logfile %v.log\n%v\n", task.ID, err)
-			os.Exit(1)
+	if !strings.Contains(task.Status, "log available") {
+		return fmt.Errorf("No log available for Task: %v Status: %v", task.ID, task.Status)
+	}
+	err = downloadLog(task.ID)
+	if err != nil {
+		return errors.Wrapf(err, "Error downloading logfile %v.log\n", task.ID)
+	}
+	return nil
+}
+
+func downloadLog(ID string) error {
+	filepath := path.Join("logs/", ID+".log")
+	outFile, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return errors.Wrapf(err, "Error opening logfile %v\n", filepath)
+	}
+	defer func() {
+		closeErr := outFile.Close()
+		if closeErr != nil {
+			log.Fatalf("Error closing logfile %v\n%v\n", filepath, err)
 		}
-		fmt.Printf("Successfully downloaded logfile logs/%v.log\n", task.ID)
-	} else {
-		fmt.Printf("Log not available task status %v\n", task.Status)
+	}()
+
+	req, err := http.NewRequest("GET", common.APIURL+"/log/download/"+ID, nil)
+	if err != nil {
+		return errors.Wrap(err, "Cannot upload logfile to server")
 	}
+	req.Header.Set("adminpassword", common.AdminPass)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "Error requesting logfile")
+	}
+	defer func() {
+		closeErr := resp.Body.Close()
+		if closeErr != nil {
+			log.Fatalf("Error closing response body %v\n", closeErr)
+		}
+	}()
+
+	_, err = io.Copy(outFile, resp.Body)
+	if err != nil {
+		return errors.Wrapf(err, "Error writinng logfile %v\n", filepath)
+	}
+
+	return nil
 }

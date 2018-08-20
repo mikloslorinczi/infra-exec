@@ -13,7 +13,7 @@ import (
 // AdminPass will be set as custom HTTP header "adminpassword".
 // The function returns the response body's byte-representation (JSON), and on optional error.
 func SendRequest(method string, url string, body []byte) ([]byte, error) {
-	response := []byte{}
+	var response []byte
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
 		err = errors.Wrapf(err, "Cannot create %v request to %v\n", method, url)
@@ -48,11 +48,12 @@ func SendRequest(method string, url string, body []byte) ([]byte, error) {
 // GetTasks sends a request to APIURL/task/list and returns
 // the fetched tasks as a slice, and on optional http error.
 func GetTasks() ([]Task, error) {
+	var tasks Tasks
 	tasksJSON, err := SendRequest("GET", APIURL+"/task/list", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot get task list")
 	}
-	tasks, err := JSONToTasks(tasksJSON)
+	err = FromJSON(&tasks, tasksJSON)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot get task list")
 	}
@@ -62,12 +63,12 @@ func GetTasks() ([]Task, error) {
 // UpdateTaskStatus sends a request to APIURL/task/status/{status}
 // and returns the server Msg and an optional http/encode error.
 func UpdateTaskStatus(id, status string) (ResponseMsg, error) {
-	responseMsg := ResponseMsg{}
+	var responseMsg ResponseMsg
 	responseJSON, err := SendRequest("POST", APIURL+"/task/status/"+id+"/"+status, nil)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update Task status")
 	}
-	responseMsg, err = JSONToMsg(responseJSON)
+	err = FromJSON(&responseMsg, responseJSON)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot read response")
 	}

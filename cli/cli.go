@@ -51,7 +51,13 @@ func main() {
 	}
 
 	if logs != "" {
-		getLog(logs)
+		err := getLog(logs)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		} else {
+			fmt.Printf("Succesfully downloaded logs/%v.log\n", logs)
+		}
 	}
 
 }

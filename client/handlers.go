@@ -66,16 +66,20 @@ func getTaskToExec() (common.Task, bool, error) {
 }
 
 func claimTask(task common.Task) (common.ResponseMsg, error) {
-	responseMsg := common.ResponseMsg{}
-	taskJSON, err := common.TaskToJSON(task)
+	var (
+		responseMsg  common.ResponseMsg
+		responseJSON []byte
+		taskJSON     []byte
+	)
+	err := common.ToJSON(&task, &taskJSON)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update task")
 	}
-	responseJSON, err := common.SendRequest("POST", common.APIURL+"/task/claim", taskJSON)
+	responseJSON, err = common.SendRequest("POST", common.APIURL+"/task/claim", taskJSON)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update task")
 	}
-	responseMsg, err = common.JSONToMsg(responseJSON)
+	err = common.FromJSON(&responseMsg, responseJSON)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update task")
 	}
@@ -109,12 +113,14 @@ func uploadLog(path, ID string) error {
 	if err != nil {
 		return errors.Wrap(err, "Cannot open logfile")
 	}
+	// File already closed. Why?
 	// defer func() {
-	// 	err := file.Close()
+	// 	err = file.Close()
 	// 	if err != nil {
 	// 		log.Fatalf("Error closing file %v\n%v", path, err)
 	// 	}
 	// }()
+
 	req, err := http.NewRequest("POST", common.APIURL+"/log/upload/"+ID, file)
 	if err != nil {
 		return errors.Wrap(err, "Cannot upload logfile to server")
@@ -134,6 +140,7 @@ func uploadLog(path, ID string) error {
 			log.Fatal(closeErr)
 		}
 	}()
+
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "Error reading response body\n")
@@ -142,5 +149,6 @@ func uploadLog(path, ID string) error {
 	if resp.StatusCode != 200 {
 		return errors.Errorf("Server answered with a non-200 status: %v\n", resp.StatusCode)
 	}
+
 	return nil
 }

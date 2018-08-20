@@ -1,9 +1,11 @@
+// Structs contain all the structures used by the Infra CLI, Server and Client
+// Eache struct has a barshal() and an unmarshal() method to convert them to JSON and back
+// They are all the implementation of the JSONable interface, which requires these two methods.
+
 package common
 
 import (
 	"encoding/json"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -13,20 +15,57 @@ var (
 	APIURL string
 )
 
-// ResponseMsg is a general response message from infra-server, usually related to an error.
+// JSONable all struct which implements the marshal and unmarshal methods, to convert it to JSON and back.
+type JSONable interface {
+	marshal() ([]byte, error)
+	unmarshal([]byte) error
+}
+
+// FromJSON will convert JSON b into struct j
+// it may return on optional decoding error.
+func FromJSON(j JSONable, b []byte) error {
+	return j.unmarshal(b)
+}
+
+// ToJSON will convert struct j into JSON b
+// it may return on optional encoding error
+func ToJSON(j JSONable, b *[]byte) error {
+	var err error
+	*b, err = j.marshal()
+	return err
+}
+
+// ResponseMsg is a general response message from the Infra Server
+// usually related to an error.
 type ResponseMsg struct {
 	Msg string `json:"msg"`
 }
 
+func (s *ResponseMsg) marshal() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+func (s *ResponseMsg) unmarshal(b []byte) error {
+	return json.Unmarshal(b, &s)
+}
+
 // CommandObj is the representation of a command ans its tags.
-// It is ment to be sent to the infra-server so it can make a task out of it for the infra-client(s).
+// It is ment to be sent to the Infra Server so it can make a task out of it for the infra-client(s).
 type CommandObj struct {
 	Command string `json:"command"`
 	Tags    string `json:"tags"`
 }
 
+func (s *CommandObj) marshal() ([]byte, error) {
+	return json.Marshal(s)
+}
+
+func (s *CommandObj) unmarshal(b []byte) error {
+	return json.Unmarshal(b, &s)
+}
+
 // Task is the structure of a single task. ID is provided by github.com/rs/xid. It is unique and the
-// time of creation can be parsed from it. Node is the name of the executing infra-client, initially it is "none".
+// time of creation can be parsed from it. Node is the name of the executing Infra Client, initially it is "none".
 // Tags hold the desired tags separated by space " ", only infra-clients with these tags can execute the task.
 // Status is the current status of the task. Initially it is "Created".
 // Command is the actual command and its argumentums separated by space " ".
@@ -38,60 +77,21 @@ type Task struct {
 	Command string `json:"command"`
 }
 
-// CommandToJSON converts a CommandObj into JSON.
-// It returns the byte representation of the JSON and an optional encoding error.
-func CommandToJSON(command CommandObj) ([]byte, error) {
-	bytes, err := json.Marshal(command)
-	if err != nil {
-		err = errors.Wrapf(err, "Error encoding JSON command: %v tags: %v\n", command.Command, command.Tags)
-		return nil, err
-	}
-	return bytes, nil
+func (s *Task) marshal() ([]byte, error) {
+	return json.Marshal(s)
 }
 
-// TaskToJSON converts a Task into JSON.
-// It returns the byte representation of the JSON and on optional encoding error.
-func TaskToJSON(task Task) ([]byte, error) {
-	bytes, err := json.Marshal(task)
-	if err != nil {
-		err = errors.Wrapf(err, "Error encoding JSON task: %v", task)
-		return nil, err
-	}
-	return bytes, nil
+func (s *Task) unmarshal(b []byte) error {
+	return json.Unmarshal(b, &s)
 }
 
-// JSONToTasks converts a JSON into a slice of Tasks.
-// It returns the slice and on optional decoding error.
-func JSONToTasks(body []byte) ([]Task, error) {
-	var tasks []Task
-	err := json.Unmarshal(body, &tasks)
-	if err != nil {
-		err = errors.Wrapf(err, "Error decoding JSON body\n%s\n", body)
-		return nil, err
-	}
-	return tasks, nil
+// Tasks represent a list of Tasks
+type Tasks []Task
+
+func (s *Tasks) marshal() ([]byte, error) {
+	return json.Marshal(s)
 }
 
-// JSONToTask converts a JSON into a single Task.
-// It returns the Task and an optional decoding error.
-func JSONToTask(body []byte) (Task, error) {
-	var task Task
-	err := json.Unmarshal(body, &task)
-	if err != nil {
-		err = errors.Wrapf(err, "Error decoding JSON body\n%s\n", body)
-		return task, err
-	}
-	return task, nil
-}
-
-// JSONToMsg converts a JSON into a ResponseMsg
-// It returns the ResponseMsg and on optional decoding error.
-func JSONToMsg(body []byte) (ResponseMsg, error) {
-	var response ResponseMsg
-	err := json.Unmarshal(body, &response)
-	if err != nil {
-		err = errors.Wrapf(err, "Error decoding JSON body\n%v\n", body)
-		return response, err
-	}
-	return response, nil
+func (s *Tasks) unmarshal(b []byte) error {
+	return json.Unmarshal(b, &s)
 }

@@ -7,3 +7,4 @@ icli
 iclient
 iserver
 *.log
+.DS_Store

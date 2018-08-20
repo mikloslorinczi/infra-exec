@@ -31,7 +31,7 @@ func SetAdminPass() error {
 		fmt.Printf("\nNo ADMIN_PASSWORD found in the environment\n")
 		input, err := GetInput("Admin password : ")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Error reading input")
 		}
 		AdminPass = input
 		fmt.Println()
