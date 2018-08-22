@@ -60,11 +60,12 @@ func initConfig() (int, error) {
 
 	err := common.LoadEnv(envFile)
 	if err != nil {
-		fmt.Printf("Cannot load %v %v\n", envFile, err)
+		fmt.Printf("Cannot load %v\n%v\n", envFile, err)
 	}
 
 	common.AdminPass = os.Getenv("ADMIN_PASSWORD")
-	envPort, _ := strconv.Atoi(os.Getenv("SERVER_PORT"))
+	// We don't need the error here, as if Atoi fails envPort will be 0.
+	envPort, _ := strconv.Atoi(os.Getenv("SERVER_PORT")) // #nosec
 
 	flag.Parse()
 
