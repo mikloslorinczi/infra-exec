@@ -11,28 +11,26 @@ import (
 	"github.com/go-http-utils/logger"
 	"github.com/gorilla/mux"
 	"github.com/mikloslorinczi/infra-exec/common"
+	"github.com/mikloslorinczi/infra-exec/db"
 )
+
+const envFile = "server.env"
 
 var port int
 
 func main() {
 
-	flag.Parse()
-
-	if common.AdminPass == "" {
-		common.AdminPass = os.Getenv("ADMIN_PASSWORD")
-	}
-	if common.AdminPass == "" {
-		fmt.Println()
-		fmt.Println("No ADMIN_PASSWORD found, please set it with the -pass flag, or export it explicitly to the environment.")
+	status, err1 := initConfig()
+	if err1 != nil {
+		fmt.Println(err1)
 		printUsage()
-		os.Exit(1)
+		os.Exit(status)
 	}
 
-	taskDB = connectJSONDB("db.json")
-	err := taskDB.Load()
-	if err != nil {
-		fmt.Println(err)
+	taskDB = db.ConnectJSONDB("db.json")
+	err2 := taskDB.Load()
+	if err2 != nil {
+		fmt.Println(err2)
 		os.Exit(1)
 	}
 
@@ -54,8 +52,32 @@ func main() {
 }
 
 func init() {
-	flag.IntVar(&port, "port", 7474, "Server PORT")
+	flag.IntVar(&port, "port", 8080, "Server PORT")
 	flag.StringVar(&common.AdminPass, "pass", "", "The Admin Password")
+}
+
+func initConfig() (int, error) {
+
+	err := common.LoadEnv(envFile)
+	if err != nil {
+		fmt.Printf("Cannot load %v %v\n", envFile, err)
+	}
+
+	common.AdminPass = os.Getenv("ADMIN_PASSWORD")
+	envPort, _ := strconv.Atoi(os.Getenv("SERVER_PORT"))
+
+	flag.Parse()
+
+	// If envPort is set, and port is on default (not changed by flag), port will be set to envPort
+	if envPort != 0 && port == 8080 {
+		port = envPort
+	}
+
+	if common.AdminPass == "" {
+		return 1, fmt.Errorf("No ADMIN_PASSWORD found, please export it or save it to %v or set it with the -pass flag", envFile)
+	}
+
+	return 0, nil
 }
 
 func printUsage() {

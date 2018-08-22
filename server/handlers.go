@@ -11,10 +11,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mikloslorinczi/infra-exec/common"
+	"github.com/mikloslorinczi/infra-exec/db"
 )
 
 // taskDB is the interface of the JSON db containing the Tasks.
-var taskDB DBI
+var taskDB db.I
 
 // authCheck check the HTTP request if "adminpassword" can be found
 // in the HEader, and if it equas to the preset AdminPass.
@@ -47,7 +48,7 @@ func custom404() http.Handler {
 
 // listTasks handles the api/task/list request.
 func listTasks(res http.ResponseWriter, req *http.Request) {
-	msg, _ := taskDB.queryAll()
+	msg, _ := taskDB.QueryAll()
 	encoder := json.NewEncoder(res)
 	err := encoder.Encode(msg)
 	if err != nil {
@@ -58,7 +59,7 @@ func listTasks(res http.ResponseWriter, req *http.Request) {
 // queryTask handles the api/task/query/{id} requests.
 func queryTask(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	task, ok := taskDB.query(params["id"])
+	task, ok := taskDB.Query(params["id"])
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		encoder := json.NewEncoder(res)
@@ -95,7 +96,7 @@ func addTask(res http.ResponseWriter, req *http.Request) {
 	}
 	newTask.Command = command.Command
 	newTask.Tags = command.Tags
-	id, err := taskDB.add(newTask)
+	id, err := taskDB.Add(newTask)
 	if err != nil {
 		fmt.Printf("Cannot add new task to DB\n%v", err)
 		res.WriteHeader(http.StatusInternalServerError)
@@ -128,7 +129,7 @@ func claimTask(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	taskToClaim.Status = "Assigned"
-	_, err = taskDB.update(taskToClaim.ID, taskToClaim)
+	_, err = taskDB.Update(taskToClaim.ID, taskToClaim)
 	if err != nil {
 		fmt.Printf("Cannot claim Task\n%v\n", err)
 		res.WriteHeader(http.StatusInternalServerError)
@@ -149,7 +150,7 @@ func claimTask(res http.ResponseWriter, req *http.Request) {
 // updateTaskStatus handles the api/task/update/{id}/{status} requests.
 func updateTaskStatus(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	task, ok := taskDB.query(params["id"])
+	task, ok := taskDB.Query(params["id"])
 	if !ok {
 		res.WriteHeader(http.StatusNotFound)
 		encoder := json.NewEncoder(res)
@@ -159,7 +160,7 @@ func updateTaskStatus(res http.ResponseWriter, req *http.Request) {
 		}
 	} else {
 		task.Status = params["status"]
-		_, dbErr := taskDB.update(params["id"], task)
+		_, dbErr := taskDB.Update(params["id"], task)
 		if dbErr != nil {
 			res.WriteHeader(http.StatusInternalServerError)
 			encoder := json.NewEncoder(res)
@@ -196,9 +197,9 @@ func uploadLog(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		fmt.Printf("Cannot write data to file \n%v", err)
 	}
-	task, _ := taskDB.query(params["id"])
+	task, _ := taskDB.Query(params["id"])
 	task.Status += ", log available"
-	_, err = taskDB.update(task.ID, task)
+	_, err = taskDB.Update(task.ID, task)
 	if err != nil {
 		fmt.Printf("Error updating task status %v", err)
 	}
@@ -211,7 +212,7 @@ func uploadLog(res http.ResponseWriter, req *http.Request) {
 func downloadLog(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	path := "logs/" + params["id"] + ".log"
-	task, _ := taskDB.query(params["id"])
+	task, _ := taskDB.Query(params["id"])
 	if strings.Contains(task.Status, "log available") {
 		logfile, err := os.OpenFile(path, os.O_RDONLY, 0400)
 		if err != nil {

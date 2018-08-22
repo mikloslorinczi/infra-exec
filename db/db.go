@@ -1,7 +1,6 @@
-package main
+package db
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,32 +11,33 @@ import (
 	"github.com/rs/xid"
 )
 
-// DBI is the interface of the JSON DB.
-type DBI interface {
+// I is the interface of the JSON DB.
+type I interface {
 	Load() error
 	save() error
-	add(t common.Task) (string, error)
-	remove(id string) (bool, error)
-	query(id string) (common.Task, bool)
-	queryAll() ([]common.Task, bool)
-	update(id string, t common.Task) (bool, error)
+	Add(t common.Task) (string, error)
+	Remove(id string) (bool, error)
+	Query(id string) (common.Task, bool)
+	QueryAll() ([]common.Task, bool)
+	Update(id string, t common.Task) (bool, error)
 }
 
 type jsonDB struct {
 	rwMutex sync.RWMutex
 	path    string
-	data    []common.Task
+	data    common.Tasks
 }
 
 // ConnectJSONDB returns a pointer to a jsonDB, working with the given path.
-func connectJSONDB(path string) DBI {
+func ConnectJSONDB(path string) I {
 	return &jsonDB{path: path}
 }
 
+// Load opens the JSON file and loads it to data
 func (db *jsonDB) Load() error {
 	db.rwMutex.Lock()
 	defer db.rwMutex.Unlock()
-	file, err := os.OpenFile(db.path, os.O_RDONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(db.path, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "Cannot open DB File %v for Read", db.path)
 	}
@@ -52,7 +52,7 @@ func (db *jsonDB) Load() error {
 		return errors.Wrapf(err, "Cannot read from DB file %v", db.path)
 	}
 	if len(bytes) > 0 {
-		err = json.Unmarshal(bytes, &db.data)
+		err = common.FromJSON(&db.data, bytes)
 		if err != nil {
 			return errors.Wrapf(err, "Cannot decode JSON file %v", db.path)
 		}
@@ -60,7 +60,9 @@ func (db *jsonDB) Load() error {
 	return nil
 }
 
+// save saves the data to the JSON file.
 func (db *jsonDB) save() error {
+	var jsonData []byte
 	db.rwMutex.Lock()
 	defer db.rwMutex.Unlock()
 	file, err := os.OpenFile(db.path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0220)
@@ -73,8 +75,7 @@ func (db *jsonDB) save() error {
 			log.Fatalf("Error closing DB file %v\n%v", db.path, err)
 		}
 	}()
-
-	jsonData, err := json.Marshal(db.data)
+	err = common.ToJSON(&db.data, &jsonData)
 	if err != nil {
 		return errors.Wrap(err, "Cannot enncode JSON")
 	}
@@ -87,7 +88,8 @@ func (db *jsonDB) save() error {
 	return nil
 }
 
-func (db *jsonDB) add(t common.Task) (string, error) {
+// Add appends the data with a Task and saves it to the JSON file.
+func (db *jsonDB) Add(t common.Task) (string, error) {
 	t.ID = xid.New().String()
 	t.Node = "None"
 	t.Status = "Created"
@@ -99,7 +101,9 @@ func (db *jsonDB) add(t common.Task) (string, error) {
 	return t.ID, nil
 }
 
-func (db *jsonDB) remove(id string) (bool, error) {
+// Remove deletes a task by ID.
+// Returns a bool indicating if the remove was success, and an optional io error.
+func (db *jsonDB) Remove(id string) (bool, error) {
 	removed := false
 	for i, task := range db.data {
 		if task.ID == id {
@@ -114,7 +118,9 @@ func (db *jsonDB) remove(id string) (bool, error) {
 	return removed, nil
 }
 
-func (db *jsonDB) query(id string) (common.Task, bool) {
+// Query returns a Task by ID. And a bool indicating if,
+// the Task was found or not.
+func (db *jsonDB) Query(id string) (common.Task, bool) {
 	t := common.Task{}
 	found := false
 	for _, task := range db.data {
@@ -126,11 +132,13 @@ func (db *jsonDB) query(id string) (common.Task, bool) {
 	return t, found
 }
 
-func (db *jsonDB) queryAll() ([]common.Task, bool) {
+// QueryAll returns the whole db and a bool indicating if it contains any element.
+func (db *jsonDB) QueryAll() ([]common.Task, bool) {
 	return db.data, len(db.data) > 0
 }
 
-func (db *jsonDB) update(id string, t common.Task) (bool, error) {
+// Update overwrites a Task (found by ID) with the argument Task's fileds (except ID).
+func (db *jsonDB) Update(id string, t common.Task) (bool, error) {
 	updated := false
 	for i, task := range db.data {
 		if task.ID == id {

@@ -8,3 +8,4 @@ iclient
 iserver
 *.log
 .DS_Store
+*.env
