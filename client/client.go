@@ -19,7 +19,7 @@ var (
 	period   int
 )
 
-func main() {
+func main() { // nolint: gocyclo
 
 	status, err := initConfig()
 	if err != nil {
@@ -31,17 +31,20 @@ func main() {
 	fmt.Printf("\nInfra Client - %v initialized.\nWith the tags: %v\nPolling Infra Server @ %v every %v seconds\n\n", nodeName, nodeTags, common.APIURL, period)
 
 	for running := true; running; {
-
+		// Calculate next tick
 		nextTick := time.Now().Add(time.Second * time.Duration(period))
-
+		// Polling Infra Server for Tasks
 		fmt.Println("Polling Infra Server...")
 		task, ok, err1 := getTaskToExec()
 		if err1 != nil || !ok {
-			fmt.Println(err1)
+			if err1 != nil {
+				fmt.Println(err1)
+			}
+			fmt.Println("No matching Task found...")
 			waitNext(nextTick)
 			continue
 		}
-
+		// Try to claim matching Task
 		fmt.Println("Matching Task found...")
 		task.Node = nodeName
 		response, err2 := claimTask(task)
@@ -50,7 +53,7 @@ func main() {
 			waitNext(nextTick)
 			continue
 		}
-
+		// Try to execute Task
 		fmt.Println(response.Msg)
 		filePath, err3 := executeTask(task)
 		if err3 != nil {
@@ -62,20 +65,20 @@ func main() {
 			waitNext(nextTick)
 			continue
 		}
-
+		// Try to update Task's status
 		fmt.Printf("Task executed, logs can be found at %v\n", filePath)
 		_, err5 := common.UpdateTaskStatus(task.ID, "Executed")
 		if err5 != nil {
 			fmt.Printf("Error updating Task status %v", err5)
 		}
-
+		// Try to upload logfile to Infra Server
 		err6 := uploadLog(filePath, task.ID)
 		if err6 != nil {
 			fmt.Printf("Error uploading logfile %v\n%v\n", filePath, err6)
 		} else {
 			fmt.Println("Logfile successfully uploaded to the Infra Server")
 		}
-
+		// Wait next tick
 		waitNext(nextTick)
 	}
 }
@@ -112,7 +115,6 @@ func initConfig() (int, error) {
 	if period == 0 {
 		period = envPeriod
 	}
-
 	if common.AdminPass == "" {
 		return 1, fmt.Errorf("No ADMIN_PASSWORD found, please export it or save it to %v or set it with the -pass flag", envFile)
 	}

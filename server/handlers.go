@@ -46,7 +46,7 @@ func custom404() http.Handler {
 	})
 }
 
-// listTasks handles the api/task/list request.
+// listTasks handles the api/tasks request.
 func listTasks(res http.ResponseWriter, req *http.Request) {
 	msg, _ := taskDB.QueryAll()
 	encoder := json.NewEncoder(res)
@@ -56,7 +56,7 @@ func listTasks(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// queryTask handles the api/task/query/{id} requests.
+// queryTask handles the api/task/{id} requests.
 func queryTask(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	task, ok := taskDB.Query(params["id"])
@@ -76,7 +76,7 @@ func queryTask(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// addTask handles the api/task/add requests.
+// addTask handles the api/tasks POST requests.
 func addTask(res http.ResponseWriter, req *http.Request) {
 	var (
 		command common.CommandObj
@@ -113,7 +113,7 @@ func addTask(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// claimTask handles the api/task/claim request.
+// claimTask handles the api/tasks/claim request.
 func claimTask(res http.ResponseWriter, req *http.Request) {
 	var taskToClaim common.Task
 	decoder := json.NewDecoder(req.Body)
@@ -179,7 +179,7 @@ func updateTaskStatus(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// uploadLog handes the api/log/upload/{id} requests.
+// uploadLog handes the api/log/{id} requests.
 func uploadLog(res http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	path := "logs/" + params["id"] + ".log"

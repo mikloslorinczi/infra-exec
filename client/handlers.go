@@ -75,7 +75,7 @@ func claimTask(task common.Task) (common.ResponseMsg, error) {
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update task")
 	}
-	responseJSON, err = common.SendRequest("POST", common.APIURL+"/task/claim", taskJSON)
+	responseJSON, err = common.SendRequest("POST", common.APIURL+"/tasks/claim", taskJSON)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update task")
 	}
@@ -121,7 +121,7 @@ func uploadLog(path, ID string) error {
 	// 	}
 	// }()
 
-	req, err := http.NewRequest("POST", common.APIURL+"/log/upload/"+ID, file)
+	req, err := http.NewRequest("POST", common.APIURL+"/log/"+ID, file)
 	if err != nil {
 		return errors.Wrap(err, "Cannot upload logfile to server")
 	}

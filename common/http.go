@@ -45,11 +45,11 @@ func SendRequest(method string, url string, body []byte) ([]byte, error) {
 	return response, nil
 }
 
-// GetTasks sends a request to APIURL/task/list and returns
+// GetTasks sends a request to APIURL/tasks and returns
 // the fetched tasks as a slice, and on optional http error.
 func GetTasks() ([]Task, error) {
 	var tasks Tasks
-	tasksJSON, err := SendRequest("GET", APIURL+"/task/list", nil)
+	tasksJSON, err := SendRequest("GET", APIURL+"/tasks", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot get task list")
 	}
@@ -60,11 +60,11 @@ func GetTasks() ([]Task, error) {
 	return tasks, nil
 }
 
-// UpdateTaskStatus sends a request to APIURL/task/status/{status}
+// UpdateTaskStatus sends a request to APIURL/task/{id}/{status}
 // and returns the server Msg and an optional http/encode error.
 func UpdateTaskStatus(id, status string) (ResponseMsg, error) {
 	var responseMsg ResponseMsg
-	responseJSON, err := SendRequest("POST", APIURL+"/task/status/"+id+"/"+status, nil)
+	responseJSON, err := SendRequest("PUT", APIURL+"/task/"+id+"/"+status, nil)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot update Task status")
 	}

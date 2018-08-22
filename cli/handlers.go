@@ -40,7 +40,7 @@ func addTask() (common.ResponseMsg, error) {
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot add new task")
 	}
-	responseJSON, err = common.SendRequest("POST", common.APIURL+"/task/add", commandJSON)
+	responseJSON, err = common.SendRequest("POST", common.APIURL+"/tasks", commandJSON)
 	if err != nil {
 		return responseMsg, errors.Wrap(err, "Cannot add new task")
 	}
@@ -61,7 +61,7 @@ func listTasks() ([]common.Task, error) {
 
 func queryTask(query string) (common.Task, error) {
 	var task common.Task
-	taskJSON, err := common.SendRequest("GET", common.APIURL+"/task/query/"+query, nil)
+	taskJSON, err := common.SendRequest("GET", common.APIURL+"/task/"+query, nil)
 	if err != nil {
 		return task, errors.Wrap(err, "Cannot query task")
 	}
@@ -100,7 +100,7 @@ func downloadLog(ID string) error {
 		}
 	}()
 
-	req, err := http.NewRequest("GET", common.APIURL+"/log/download/"+ID, nil)
+	req, err := http.NewRequest("GET", common.APIURL+"/log/"+ID, nil)
 	if err != nil {
 		return errors.Wrap(err, "Cannot upload logfile to server")
 	}
