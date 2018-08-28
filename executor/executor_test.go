@@ -29,15 +29,13 @@ func (s *CommandExecutorTestSuite) TestParseCommand_Empty_Input() {
 func (s *CommandExecutorTestSuite) TestExecCommand_Empty_Input() {
 	testFile, err := executor.NewWriteFile("testFile")
 	defer func() {
-		fileErr := testFile.Close()
-		if fileErr != nil {
-			log.Fatal("Cannot close testFile")
+		if fileErr := testFile.Close(); fileErr != nil {
+			log.Fatalf("Cannot close testFile %v\n", fileErr)
 		}
 	}()
 	defer func() {
-		remErr := os.Remove("testFile")
-		if remErr != nil {
-			log.Fatal("Cannot remove TestFile")
+		if remErr := os.Remove("testFile"); remErr != nil {
+			log.Fatalf("Cannot remove TestFile %v\n", remErr)
 		}
 	}()
 	require.NoError(s.T(), err, "getWriteFile should create testFile")

@@ -8,13 +8,6 @@ import (
 	"encoding/json"
 )
 
-var (
-	// AdminPass is the password used to authenticate the admin.
-	AdminPass string
-	// APIURL is the address of the infra-server's api. By default it will be "http://localhost:7474/api".
-	APIURL string
-)
-
 // JSONable all struct which implements the marshal and unmarshal methods, to convert it to JSON and back.
 type JSONable interface {
 	marshal() ([]byte, error)

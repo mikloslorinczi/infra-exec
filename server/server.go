@@ -1,98 +1,41 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"net/http"
-	"os"
-	"strconv"
 
-	"github.com/go-http-utils/logger"
-	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
+
 	"github.com/mikloslorinczi/infra-exec/common"
-	"github.com/mikloslorinczi/infra-exec/db"
+	"github.com/mikloslorinczi/infra-exec/server/cmd"
 )
 
-const envFile = "server.env"
-
-var port int
-
 func main() {
-
-	status, err1 := initConfig()
-	if err1 != nil {
-		fmt.Println(err1)
-		printUsage()
-		os.Exit(status)
+	// Run Server
+	if err := cmd.RootCmd.Execute(); err != nil {
+		log.Fatalf("Error during execution : %v\n", err)
 	}
-
-	taskDB = db.ConnectJSONDB("db.json")
-	err2 := taskDB.Load()
-	if err2 != nil {
-		fmt.Println(err2)
-		os.Exit(1)
-	}
-
-	router := mux.NewRouter()
-	router.NotFoundHandler = custom404()
-	router.Use(authCheck)
-	router.HandleFunc("/api/tasks", listTasks).Methods("GET")
-	router.HandleFunc("/api/task/{id}", queryTask).Methods("GET")
-	router.HandleFunc("/api/tasks", addTask).Methods("POST")
-	router.HandleFunc("/api/tasks/claim", claimTask).Methods("POST")
-	router.HandleFunc("/api/task/{id}/{status}", updateTaskStatus).Methods("PUT")
-	router.HandleFunc("/api/log/{id}", downloadLog).Methods("GET")
-	router.HandleFunc("/api/log/{id}", uploadLog).Methods("POST")
-
-	fmt.Printf("\nInfra server listening on PORT %v\n", port)
-
-	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(port), logger.Handler(router, os.Stdout, logger.CommonLoggerType)))
-
 }
 
 func init() {
-	flag.IntVar(&port, "port", 8080, "Server PORT")
-	flag.StringVar(&common.AdminPass, "pass", "", "The Admin Password")
-}
-
-func initConfig() (int, error) {
-
-	err := common.LoadEnv(envFile)
-	if err != nil {
-		fmt.Printf("Cannot load %v\n%v\n", envFile, err)
+	// Create logs/ if not exists
+	if err := common.CheckLogFolder(); err != nil {
+		fmt.Printf("Error loading configFile cli.yaml %v\n", err)
 	}
-
-	common.AdminPass = os.Getenv("ADMIN_PASSWORD")
-	// We don't need the error here, as if Atoi fails envPort will be 0.
-	envPort, _ := strconv.Atoi(os.Getenv("SERVER_PORT")) // #nosec
-
-	flag.Parse()
-
-	// If envPort is set, and port is on default (not changed by flag), port will be set to envPort
-	if envPort != 0 && port == 8080 {
-		port = envPort
+	// Load config (defaults < server.yaml < ENV)
+	if err := common.ReadConfig("./", "server", map[string]interface{}{
+		"PORT":     8080,
+		"APITOKEN": "",
+	}); err != nil {
+		log.Fatalf("Cannot load configfile server.yaml %v\n", err)
 	}
-
-	if common.AdminPass == "" {
-		return 1, fmt.Errorf("No ADMIN_PASSWORD found, please export it or save it to %v or set it with the -pass flag", envFile)
+	// Setup global flags
+	cmd.RootCmd.PersistentFlags().StringP("apiToken", "t", "", "API Token")
+	cmd.RootCmd.PersistentFlags().StringP("PORT", "p", "", "Server PORT")
+	if err := viper.BindPFlag("apiToken", cmd.RootCmd.PersistentFlags().Lookup("apiToken")); err != nil {
+		fmt.Printf("Cannot bind flag apiToken %v\n", err)
 	}
-
-	return 0, nil
-}
-
-func printUsage() {
-	fmt.Println()
-	fmt.Println("Infra Server")
-	fmt.Println()
-	fmt.Println("Hosts the Task Database")
-	fmt.Println("New tasks can be added with the Infra CLI")
-	fmt.Println("Infra Client(s) periodically polls the Task Database for commands to execute")
-	fmt.Println()
-	fmt.Printf("Usage: %s [Option] [PORT or AdminPassword]", os.Args[0])
-	fmt.Println()
-	fmt.Println("Options:")
-	fmt.Println()
-	fmt.Println()
-	flag.PrintDefaults()
+	if err := viper.BindPFlag("PORT", cmd.RootCmd.PersistentFlags().Lookup("PORT")); err != nil {
+		fmt.Printf("Cannot bind flag PORT %v\n", err)
+	}
 }

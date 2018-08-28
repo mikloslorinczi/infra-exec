@@ -1,0 +1,8 @@
+---
+
+# Infra CLI configfile
+
+apiToken : pass1234
+apiURL   : "http://localhost:8080/api"
+
+...

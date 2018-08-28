@@ -1,0 +1,11 @@
+---
+
+# Infra Client config
+
+apiURL   : http://localhost:8080/api
+apiToken : pass1234
+nodeName : Node_01
+nodeTags : tag1 tag2 tag3 this is a tag
+period   : 15
+
+...

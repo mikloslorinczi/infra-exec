@@ -1,145 +1,54 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"os"
-	"strconv"
-	"time"
+	"log"
 
+	"github.com/mikloslorinczi/infra-exec/client/cmd"
 	"github.com/mikloslorinczi/infra-exec/common"
-	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
-const envFile = "client.env"
-
-var (
-	nodeName string
-	nodeTags string
-	period   int
-)
-
-func main() { // nolint: gocyclo
-
-	status, err := initConfig()
-	if err != nil {
-		fmt.Println(err)
-		printUsage()
-		os.Exit(status)
-	}
-
-	fmt.Printf("\nInfra Client - %v initialized.\nWith the tags: %v\nPolling Infra Server @ %v every %v seconds\n\n", nodeName, nodeTags, common.APIURL, period)
-
-	for running := true; running; {
-		// Calculate next tick
-		nextTick := time.Now().Add(time.Second * time.Duration(period))
-		// Polling Infra Server for Tasks
-		fmt.Println("Polling Infra Server...")
-		task, ok, err1 := getTaskToExec()
-		if err1 != nil || !ok {
-			if err1 != nil {
-				fmt.Println(err1)
-			}
-			fmt.Println("No matching Task found...")
-			waitNext(nextTick)
-			continue
-		}
-		// Try to claim matching Task
-		fmt.Println("Matching Task found...")
-		task.Node = nodeName
-		response, err2 := claimTask(task)
-		if err2 != nil {
-			fmt.Println(err2)
-			waitNext(nextTick)
-			continue
-		}
-		// Try to execute Task
-		fmt.Println(response.Msg)
-		filePath, err3 := executeTask(task)
-		if err3 != nil {
-			fmt.Printf("Error during execution %v\n", err3)
-			_, err4 := common.UpdateTaskStatus(task.ID, "Execution error")
-			if err4 != nil {
-				fmt.Printf("Error updating Task status %v\n", err4)
-			}
-			waitNext(nextTick)
-			continue
-		}
-		// Try to update Task's status
-		fmt.Printf("Task executed, logs can be found at %v\n", filePath)
-		_, err5 := common.UpdateTaskStatus(task.ID, "Executed")
-		if err5 != nil {
-			fmt.Printf("Error updating Task status %v", err5)
-		}
-		// Try to upload logfile to Infra Server
-		err6 := uploadLog(filePath, task.ID)
-		if err6 != nil {
-			fmt.Printf("Error uploading logfile %v\n%v\n", filePath, err6)
-		} else {
-			fmt.Println("Logfile successfully uploaded to the Infra Server")
-		}
-		// Wait next tick
-		waitNext(nextTick)
+func main() {
+	if err := cmd.RootCmd.Execute(); err != nil {
+		log.Fatalf("Error during execution : %v\n", err)
 	}
 }
 
 func init() {
-	flag.StringVar(&nodeName, "name", "", "Name of this node")
-	flag.StringVar(&nodeTags, "tags", "", "Tags of this node")
-	flag.IntVar(&period, "period", 0, "Poll period in seconds")
-	flag.StringVar(&common.AdminPass, "pass", "", "Admin password")
-	flag.StringVar(&common.APIURL, "u", "", "URL addres of the api")
-}
-
-func waitNext(t time.Time) {
-	time.Sleep(time.Until(t))
-}
-
-func initConfig() (int, error) {
-
-	err := common.LoadEnv(envFile)
-	if err != nil {
-		fmt.Printf("Cannot load %v %v\n", envFile, err)
+	// Create logs/ if not exists
+	if err := common.CheckLogFolder(); err != nil {
+		fmt.Printf("Error loading client.yaml %v\n", err)
 	}
-	common.AdminPass = os.Getenv("ADMIN_PASSWORD")
-	common.APIURL = os.Getenv("API_URL")
-	nodeName = os.Getenv("NODE_NAME")
-	nodeTags = os.Getenv("NODE_TAGS")
-	envPeriod, err := strconv.Atoi(os.Getenv("NODE_PERIOD"))
-	if err != nil {
-		return 1, errors.Wrap(err, "Error loading poll-period from environment")
+	// Load config from client.yaml and ENV
+	if err := common.ReadConfig("./", "client", map[string]interface{}{
+		"apiToken": "",
+		"apiURL":   "",
+		"nodeName": "",
+		"nodeTags": "",
+		"period":   60,
+	}); err != nil {
+		fmt.Printf("Cannot set configuration %v\n", err)
 	}
-
-	flag.Parse()
-
-	if period == 0 {
-		period = envPeriod
+	// Setup flags
+	cmd.RootCmd.PersistentFlags().StringP("apiToken", "t", "", "API Token")
+	cmd.RootCmd.PersistentFlags().StringP("apiURL", "u", "", "API URL")
+	cmd.RootCmd.PersistentFlags().StringP("nodeName", "n", "", "Node Name")
+	cmd.RootCmd.PersistentFlags().StringP("nodeTags", "s", "", "Node Tags")
+	cmd.RootCmd.PersistentFlags().IntP("period", "p", 60, "Node poll period")
+	if err := viper.BindPFlag("apiToken", cmd.RootCmd.PersistentFlags().Lookup("apiToken")); err != nil {
+		fmt.Printf("Cannot bind flag apiToken %v\n", err)
 	}
-	if common.AdminPass == "" {
-		return 1, fmt.Errorf("No ADMIN_PASSWORD found, please export it or save it to %v or set it with the -pass flag", envFile)
+	if err := viper.BindPFlag("apiURL", cmd.RootCmd.PersistentFlags().Lookup("apiURL")); err != nil {
+		fmt.Printf("Cannot bind flag apiURL %v\n", err)
 	}
-	if common.APIURL == "" {
-		return 1, fmt.Errorf("No API_URL found, please export it or save it to %v or set it with the -u flag", envFile)
+	if err := viper.BindPFlag("nodeName", cmd.RootCmd.PersistentFlags().Lookup("nodeName")); err != nil {
+		fmt.Printf("Cannot bind flag nodeName %v\n", err)
 	}
-	if nodeName == "" {
-		return 1, fmt.Errorf("No NODE_NAME found, please export it or save it to %v or set it with the -name flag", envFile)
+	if err := viper.BindPFlag("nodeTags", cmd.RootCmd.PersistentFlags().Lookup("nodeTags")); err != nil {
+		fmt.Printf("Cannot bind flag nodeTags %v\n", err)
 	}
-
-	return 0, nil
-}
-
-func printUsage() {
-	fmt.Println()
-	fmt.Println("Infra Client")
-	fmt.Println()
-	fmt.Println("Periodically polls the Infra Server for new Tasks")
-	fmt.Println("If new task is found, and its tags are matching with the Client's tags")
-	fmt.Println("The Client will try to execute the Task and send the logfile to the Server")
-	fmt.Println()
-	fmt.Printf("Usage: %s [Option] [string]", os.Args[0])
-	fmt.Println()
-	fmt.Println("Options:")
-	fmt.Println()
-	fmt.Println()
-	flag.PrintDefaults()
+	if err := viper.BindPFlag("period", cmd.RootCmd.PersistentFlags().Lookup("period")); err != nil {
+		fmt.Printf("Cannot bind flag period %v\n", err)
+	}
 }

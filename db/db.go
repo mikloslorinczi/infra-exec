@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/mikloslorinczi/infra-exec/common"
@@ -11,8 +12,8 @@ import (
 	"github.com/rs/xid"
 )
 
-// I is the interface of the JSON DB.
-type I interface {
+// Controller is the interface of the JSON DB.
+type Controller interface {
 	Load() error
 	save() error
 	Add(t common.Task) (string, error)
@@ -28,8 +29,8 @@ type jsonDB struct {
 	data    common.Tasks
 }
 
-// ConnectJSONDB returns a pointer to a jsonDB, working with the given path.
-func ConnectJSONDB(path string) I {
+// NewJSONDB returns a pointer to a new jsonDB, working with the given path.
+func NewJSONDB(path string) Controller {
 	return &jsonDB{path: path}
 }
 
@@ -88,9 +89,10 @@ func (db *jsonDB) save() error {
 	return nil
 }
 
-// Add appends the data with a Task and saves it to the JSON file.
+// Add generates an unique ID for the new Task
+// and saves it to the JSON file.
 func (db *jsonDB) Add(t common.Task) (string, error) {
-	t.ID = xid.New().String()
+	t.ID = reverse(xid.New().String())
 	t.Node = "None"
 	t.Status = "Created"
 	db.data = append(db.data, t)
@@ -118,18 +120,15 @@ func (db *jsonDB) Remove(id string) (bool, error) {
 	return removed, nil
 }
 
-// Query returns a Task by ID. And a bool indicating if,
-// the Task was found or not.
+// Query returns the first Task which ID contains the querystring (and true)
+// If no Task found it will return an empty Task and false.
 func (db *jsonDB) Query(id string) (common.Task, bool) {
-	t := common.Task{}
-	found := false
 	for _, task := range db.data {
-		if task.ID == id {
-			t = task
-			found = true
+		if strings.Contains(task.ID, id) {
+			return task, true
 		}
 	}
-	return t, found
+	return common.Task{}, false
 }
 
 // QueryAll returns the whole db and a bool indicating if it contains any element.
@@ -154,4 +153,13 @@ func (db *jsonDB) Update(id string, t common.Task) (bool, error) {
 		}
 	}
 	return updated, nil
+}
+
+// Used to reverse XID
+func reverse(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
 }
