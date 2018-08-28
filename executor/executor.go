@@ -44,6 +44,10 @@ func NewWriteFile(path string) (*os.File, error) {
 // The function may return an error raised during the execution
 func ExecCommand(command Command, commandArgs CommandArguments, w io.Writer) error {
 
+	if command == " " {
+		return nil
+	}
+
 	writer := bufio.NewWriter(w)
 	defer func() {
 		if err := writer.Flush(); err != nil {
