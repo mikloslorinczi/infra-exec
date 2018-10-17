@@ -19,15 +19,16 @@ var taskDB db.Controller
 
 // RootCmd is the basecommand, it is the "entrypoint" of iserver.
 var RootCmd = &cobra.Command{
-	Use:   "iclient",
-	Short: "Infra Client is a node that executes Task polled from the Infra Server",
+	Use:   "iserver [-flags]",
+	Short: "Infra Server is responsible to distribute tasks to the Infra Clients",
 	Long: `
-	Infra Client
+Infra Server
 
-	Periodically polls the Infra Server for new Tasks
-	If new task is found, and its tags are matching with the Client's tags
-	The Client will try to execute the Task and send the logfile back to the Server
-	`,
+The Infra Server is responsible to distribute tasks among the Infra Clients. Users can
+issue new tasks with the help of the Infra Cli. Once the new task is saved to the db, it will
+be retrived by clients when they poll the server. Clients can claim tasks and execute them,
+updating its status and logs through the server.  
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initDB()
 		runServer()
