@@ -2,3 +2,10 @@ infra-exec
 outputFile
 testFile
 .vscode
+db.json
+icli
+iclient
+iserver
+*.log
+.DS_Store
+*.env

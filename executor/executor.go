@@ -42,14 +42,16 @@ func NewWriteFile(path string) (*os.File, error) {
 // ExecCommand accepts executor's two own type Command and CommandArguments produced by ParseCommand,
 // and an io.Writer where the result of the execution will be writen (both stdout and stderr).
 // The function may return an error raised during the execution
-func ExecCommand(command Command, commandArgs CommandArguments, w io.Writer) (err error) {
+func ExecCommand(command Command, commandArgs CommandArguments, w io.Writer) error {
+
+	if command == " " {
+		return nil
+	}
 
 	writer := bufio.NewWriter(w)
 	defer func() {
-		err = writer.Flush()
-		if err != nil {
-			err = errors.Wrap(err, "Cannot flush buffer")
-			log.Fatal(err)
+		if err := writer.Flush(); err != nil {
+			log.Fatalf("Cannot flush writer %v\n", err)
 		}
 	}()
 
@@ -57,16 +59,14 @@ func ExecCommand(command Command, commandArgs CommandArguments, w io.Writer) (er
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 
-	err = cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "Cannot execute command %v", command)
 	}
 
-	err = cmd.Wait()
-	if err != nil {
+	if err := cmd.Wait(); err != nil {
 		return errors.Wrapf(err, "Error during execution of command %v", command)
 	}
 
-	return
+	return nil
 
 }

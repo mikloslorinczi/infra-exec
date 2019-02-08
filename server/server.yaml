@@ -1,0 +1,8 @@
+---
+
+# Infra Server configfile
+
+PORT : 8080
+apiToken : pass1234
+
+...
