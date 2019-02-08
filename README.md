@@ -14,15 +14,3 @@ The server also stores the logfiles sent from client(s), which can be downloaded
 
 ### Infra Client
 The Infra Client regulary polls the Infra Server for new tasks to execute. When it finds a match (based on Tags) it tries to execute the task and channel its output (both stdin & stderr) to a logfile and send it back to the Infra Server.
-
-## Test
-
-Tag test
-We needed some commits here
-and some commit there
-
-one more
-and more
-
-commit 5
-commit 6
